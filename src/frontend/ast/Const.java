@@ -62,4 +62,19 @@ public final class Const extends Expr {
     	return i;
     }
     
+    public double toDouble(){
+    	double i = 0;
+    	try {
+    		i = Double.parseDouble(number);
+    	}catch (NumberFormatException nfe) {
+    		
+    	}
+    	// TODO: implement this Method!
+    	return i;
+    }
+    
+    public String getNumber(){
+    	return number;
+    }
+    
 }

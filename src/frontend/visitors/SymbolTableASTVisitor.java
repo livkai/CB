@@ -2,9 +2,12 @@ package frontend.visitors;
 
 
 import java.util.ArrayList;
+import common.*;
+
 import java.util.Iterator;
 
 import frontend.ast.*;
+import frontend.util.Symboltable;
 
 /**
  * Adapter class that visits all ASTNodes and performs NO action on them.
@@ -15,24 +18,66 @@ import frontend.ast.*;
  * @param <R>
  *          The type of the value returned by each visit method
  */
-public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
+public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 
 	/** variable hold number of errors that occured during the Visitor run */
 	protected int errors;
 	/** name of the visitor */
 	protected  String name;
-	protected ArrayList<ASTNode> list;
-	protected boolean end = false;
-	protected int i= 0;
-	protected int index = -1;
-
+	protected Symboltable st;
 
 	/**
 	 * Default prolog. Does nothing.
 	 * @see frontend.visitors.ASTVisitor#prolog ASTVisitor.prolog
 	 */
 	public void prolog(ASTNode n) {
-		list.add(n);
+		if(n instanceof Program) {
+			st.enterBlock();
+			Variable v0 = new Variable("readInt", Type.getIntType());
+			v0.setDepth(0);
+			Variable v1 = new Variable("readChar", Type.getIntType());
+			v1.setDepth(0);
+			Variable v2 = new Variable("readReal", Type.getRealType());
+			v2.setDepth(0);
+			Variable v3 = new Variable("writeInt", Type.getIntType());
+			v3.setDepth(0);
+			Variable v4 = new Variable("writeChar", Type.getIntType());
+			v4.setDepth(0);
+			Variable v5 = new Variable("writeReal", Type.getIntType());
+			v5.setDepth(0);
+			st.addVariable(v0);
+			st.addVariable(v1);
+			st.addVariable(v2);
+			st.addVariable(v3);
+			st.addVariable(v4);
+			st.addVariable(v5);
+			
+		} else if( n instanceof Block ){
+			st.enterBlock();
+		} else if(n instanceof Identifier) {
+			Variable v = st.getVariable(((Identifier) n).getName());
+			if(v != null) {
+				((Identifier) n).setVariable(v);
+			}else {
+				throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((Identifier) n).getName() + " cannot be resolved to a variable!");
+			}
+		} else if(n instanceof FuncDecl){
+			Variable fd = new Variable(((FuncDecl) n).getName(), ((FuncDecl) n).getType(), n.getFile(), n.getLine());
+			fd.setDepth(0);
+			st.addVariable(fd);
+			st.enterBlock();
+		/*	ParList pl = ((FuncDecl) n).getParameterList();
+			for(int i = 0; i < pl.size(); i++) {
+				Variable var = new Variable(pl.get(i).getName(), pl.get(i).getType(), pl.getFile(), pl.getLine());
+				var.setDepth(1);
+				st.addVariable(var);
+			}*/
+		} else if(n instanceof VarDecl) {
+			Variable vd = new Variable(((VarDecl) n).getName(), ((VarDecl) n).getType(), n.getFile(), n.getLine());
+			vd.setDepth(st.getDepth());
+			st.addVariable(vd);
+		}
+		
 	}
 
 	/**
@@ -40,85 +85,8 @@ public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements A
 	 * @see frontend.visitors.ASTVisitor#epilog ASTVisitor.epilog
 	 */
 	public void epilog(ASTNode n) {
-		list.remove(list.size()-1);
-		if(!list.isEmpty()) {
-			ASTNode parent = list.get(list.size()-1);
-			if(n instanceof ADDExpr || n instanceof SUBExpr || n instanceof MULTerm || n instanceof DIVTerm){
-				if(((BinExpr) n).getLeft() instanceof Const  && ((BinExpr) n).getRight() instanceof Const) {
-					Const newConst = null;
-					if(n instanceof ADDExpr) { 
-						if(((Const) ((ADDExpr) n).getLeft()).getNumber().contains(".") || ((Const) ((ADDExpr) n).getRight()).getNumber().contains(".")){
-							Double newNumber = new Double(((Const) ((ADDExpr) n).getLeft()).toDouble() + ((Const) ((ADDExpr) n).getRight()).toDouble());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}else{
-							Integer newNumber = new Integer(((Const) ((ADDExpr) n).getLeft()).toInt() + ((Const) ((ADDExpr) n).getRight()).toInt());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}	
-					}
-					else if(n instanceof SUBExpr) {
-						if(((Const) ((SUBExpr) n).getLeft()).getNumber().contains(".") || ((Const) ((SUBExpr) n).getRight()).getNumber().contains(".")){
-							Double newNumber = new Double(((Const) ((SUBExpr) n).getLeft()).toDouble() - ((Const) ((SUBExpr) n).getRight()).toDouble());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}else{
-							Integer newNumber = new Integer(((Const) ((SUBExpr) n).getLeft()).toInt() - ((Const) ((SUBExpr) n).getRight()).toInt());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}
-					}
-					else if(n instanceof MULTerm) {
-						if(((Const) ((MULTerm) n).getLeft()).getNumber().contains(".") || ((Const) ((MULTerm) n).getRight()).getNumber().contains(".")){
-							Double newNumber = new Double(((Const) ((MULTerm) n).getLeft()).toDouble() * ((Const) ((MULTerm) n).getRight()).toDouble());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}else{
-							Integer newNumber = new Integer(((Const) ((MULTerm) n).getLeft()).toInt() * ((Const) ((MULTerm) n).getRight()).toInt());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}
-					}
-					else if(n instanceof DIVTerm) {
-						if(((Const) ((DIVTerm) n).getRight()).toDouble() != 0) {
-							if(((Const) ((DIVTerm) n).getLeft()).getNumber().contains(".") || ((Const) ((DIVTerm) n).getRight()).getNumber().contains(".")){
-								Double newNumber = new Double(((Const) ((DIVTerm) n).getLeft()).toDouble() / ((Const) ((DIVTerm) n).getRight()).toDouble());
-								newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-							}else{
-								Integer newNumber = new Integer(((Const) ((DIVTerm) n).getLeft()).toInt() / ((Const) ((DIVTerm) n).getRight()).toInt());
-								newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-							}
-						} 
-					}	
-					if(parent instanceof BinExpr) {
-						//reduction in left subtree
-						if(((BinExpr) parent).getLeft().equals(n)) {
-							((BinExpr) parent).setLeft(newConst);
-						}
-						//reduction in right subtree
-						else if(((BinExpr) parent).getRight().equals(n)) {
-							((BinExpr) parent).setRight(newConst);
-						}
-					}
-					
-					if(parent instanceof AssgnStmt) {
-						if(((AssgnStmt) parent).getExpr().equals(n)) {
-							((AssgnStmt) parent).setExpr(newConst);
-						}
-					}
-					
-					if(parent instanceof ReturnStmt) {
-						if(((ReturnStmt) parent).getReturnValue().equals(n)) {
-							((ReturnStmt) parent).setReturnValue(newConst);
-						}
-					}
-					
-					if(parent instanceof ArrayAccess) {
-						Iterable<Expr> iter = ((ArrayAccess) parent).getIndices();
-						int count = -1;
-						for(Expr ex : iter) {
-							count++;
-							if(((ArrayAccess) parent).getIndex(count).equals(n)) {
-								((ArrayAccess) parent).setIndex(count, newConst);
-							}
-						}
-					}
-				} 
-			}
+		if(n instanceof Program || n instanceof Block || n instanceof FuncDecl) {
+			st.leaveBlock();
 		}
 	}
 
@@ -128,11 +96,11 @@ public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements A
 	 * @param name
 	 *            set the name to this
 	 */
-	public ReduceASTVisitor(final String name) {
+	public SymbolTableASTVisitor(final String name) {
 		super(name);
-		list = new ArrayList<ASTNode>();
 		errors = 0;
 		this.name = name;
+		st = new Symboltable();
 	}
 	
 	
