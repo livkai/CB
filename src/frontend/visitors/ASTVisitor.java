@@ -59,6 +59,7 @@ public interface ASTVisitor<P, R> {
      * @param astnode
      *            ASTNode to visit
      */
+<<<<<<< HEAD
     public abstract R visit(final Int2Real astnode, final P param);
 
     /**
@@ -78,6 +79,10 @@ public interface ASTVisitor<P, R> {
     public abstract R visit(final AssgnStmt astnode, final P param);
     
     
+=======
+    public abstract R visit(final AssgnStmt astnode, final P param);
+
+>>>>>>> dd6208e07af8792917057b42ca34b23adb7411c5
     /**
      * Abstract method for the visitor pattern
      * 
