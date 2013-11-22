@@ -2,9 +2,12 @@ package frontend.visitors;
 
 
 import java.util.ArrayList;
+import common.*;
+
 import java.util.Iterator;
 
 import frontend.ast.*;
+import frontend.util.Symboltable;
 
 /**
  * Adapter class that visits all ASTNodes and performs NO action on them.
@@ -15,17 +18,13 @@ import frontend.ast.*;
  * @param <R>
  *          The type of the value returned by each visit method
  */
-public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
+public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 
 	/** variable hold number of errors that occured during the Visitor run */
 	protected int errors;
 	/** name of the visitor */
 	protected  String name;
 	protected ArrayList<ASTNode> list;
-	protected boolean end = false;
-	protected int i= 0;
-	protected int index = -1;
-
 
 	/**
 	 * prolog. 
@@ -36,92 +35,128 @@ public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements A
 	}
 
 	/**
-	 * epilog.  
+	 * epilog.
 	 * @see frontend.visitors.ASTVisitor#epilog ASTVisitor.epilog
 	 */
 	public void epilog(ASTNode n) {
 		list.remove(list.size()-1);
 		if(!list.isEmpty()) {
 			ASTNode parent = list.get(list.size()-1);
-			//test if n is an expression which can be simplified
-			if(n instanceof ADDExpr || n instanceof SUBExpr || n instanceof MULTerm || n instanceof DIVTerm){
-				if(((BinExpr) n).getLeft() instanceof Const  && ((BinExpr) n).getRight() instanceof Const) {
-					Const newConst = null;
-					if(n instanceof ADDExpr) { 
-						//tests if value is from type 'real' or 'int'
-						if(((Const) ((ADDExpr) n).getLeft()).getNumber().contains(".") || ((Const) ((ADDExpr) n).getRight()).getNumber().contains(".")){
-							Double newNumber = new Double(((Const) ((ADDExpr) n).getLeft()).toDouble() + ((Const) ((ADDExpr) n).getRight()).toDouble());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}else{
-							Integer newNumber = new Integer(((Const) ((ADDExpr) n).getLeft()).toInt() + ((Const) ((ADDExpr) n).getRight()).toInt());
-							//create the new constant
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}	
-					}
-					else if(n instanceof SUBExpr) {
-						if(((Const) ((SUBExpr) n).getLeft()).getNumber().contains(".") || ((Const) ((SUBExpr) n).getRight()).getNumber().contains(".")){
-							Double newNumber = new Double(((Const) ((SUBExpr) n).getLeft()).toDouble() - ((Const) ((SUBExpr) n).getRight()).toDouble());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}else{
-							Integer newNumber = new Integer(((Const) ((SUBExpr) n).getLeft()).toInt() - ((Const) ((SUBExpr) n).getRight()).toInt());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
+			if(n instanceof BinExpr) {
+				Type leftType = ((BinExpr) n).getLeft().getType();
+				Type rightType = ((BinExpr) n).getRight().getType();
+				if(n instanceof ADDExpr || n instanceof SUBExpr || n instanceof MULTerm || n instanceof DIVTerm){
+				
+					if(leftType.equals(rightType)) {
+						((BinExpr) n).setType(leftType);
+					}else {
+						if(leftType.equals(Type.getIntType())) {
+							Int2Real i2r = new Int2Real(((BinExpr) n).getLeft().getFile(), ((BinExpr) n).getLeft().getLine(), ((BinExpr) n).getLeft());
+							((BinExpr) n).setLeft(i2r);
+							((BinExpr) n).setType(Type.getRealType());
+						}else if(leftType.equals(Type.getRealType())){
+							Int2Real i2r = new Int2Real(((BinExpr) n).getRight().getFile(), ((BinExpr) n).getRight().getLine(), ((BinExpr) n).getRight());
+							((BinExpr) n).setRight(i2r);
+							((BinExpr) n).setType(Type.getRealType());
+						}
+						else{
+							throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Invalid arithmetic operation between arraytype and primitive type");
 						}
 					}
-					else if(n instanceof MULTerm) {
-						if(((Const) ((MULTerm) n).getLeft()).getNumber().contains(".") || ((Const) ((MULTerm) n).getRight()).getNumber().contains(".")){
-							Double newNumber = new Double(((Const) ((MULTerm) n).getLeft()).toDouble() * ((Const) ((MULTerm) n).getRight()).toDouble());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}else{
-							Integer newNumber = new Integer(((Const) ((MULTerm) n).getLeft()).toInt() * ((Const) ((MULTerm) n).getRight()).toInt());
-							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-						}
-					}
-					else if(n instanceof DIVTerm) {
-						if(((Const) ((DIVTerm) n).getRight()).toDouble() != 0) {
-							if(((Const) ((DIVTerm) n).getLeft()).getNumber().contains(".") || ((Const) ((DIVTerm) n).getRight()).getNumber().contains(".")){
-								Double newNumber = new Double(((Const) ((DIVTerm) n).getLeft()).toDouble() / ((Const) ((DIVTerm) n).getRight()).toDouble());
-								newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-							}else{
-								Integer newNumber = new Integer(((Const) ((DIVTerm) n).getLeft()).toInt() / ((Const) ((DIVTerm) n).getRight()).toInt());
-								newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
-							}
-						} 
-					}	
-					if(parent instanceof BinExpr) {
-						//reduction in left subtree
-						if(((BinExpr) parent).getLeft().equals(n)) {
-							((BinExpr) parent).setLeft(newConst);
-						}
-						//reduction in right subtree
-						else if(((BinExpr) parent).getRight().equals(n)) {
-							((BinExpr) parent).setRight(newConst);
-						}
-					}
-					
-					if(parent instanceof AssgnStmt) {
-						if(((AssgnStmt) parent).getExpr().equals(n)) {
-							((AssgnStmt) parent).setExpr(newConst);
-						}
-					}
-					
-					if(parent instanceof ReturnStmt) {
-						if(((ReturnStmt) parent).getReturnValue().equals(n)) {
-							((ReturnStmt) parent).setReturnValue(newConst);
-						}
-					}
-					
-					if(parent instanceof ArrayAccess) {
-						Iterable<Expr> iter = ((ArrayAccess) parent).getIndices();
-						int count = -1;
-						for(Expr ex : iter) {
-							count++;
-							if(((ArrayAccess) parent).getIndex(count).equals(n)) {
-								((ArrayAccess) parent).setIndex(count, newConst);
-							}
-						}
-					}
-				} 
+				}
 			}
+			else if(n instanceof Const) {
+				if(((Const) n).getNumber().contains(".")) {
+					((Const) n).setType(Type.getRealType());
+				}else {
+					((Const) n).setType(Type.getIntType());
+				}
+			}else if(n instanceof Identifier) {
+				((Identifier) n).setType(((Identifier) n).getVariable().getType());
+			}else if(n instanceof AssgnStmt) {
+				Type leftType = ((AssgnStmt) n).getLValue().getType();
+				Type rightType = ((AssgnStmt) n).getExpr().getType();
+				if(!leftType.equals(rightType)) {
+					if(leftType.equals(Type.getIntType())) {
+						Real2Int r2i = new Real2Int(((AssgnStmt) n).getExpr().getFile(), ((AssgnStmt) n).getExpr().getLine(), ((AssgnStmt) n).getExpr());
+						((AssgnStmt) n).setExpr(r2i);
+					}else if(leftType.equals(Type.getRealType())){
+						Int2Real i2r = new Int2Real(((AssgnStmt) n).getExpr().getFile(), ((AssgnStmt) n).getExpr().getLine(), ((AssgnStmt) n).getExpr());
+						((AssgnStmt) n).setExpr(i2r);
+					}else {
+						throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Invalid assignment between arraytype and primitive type");
+					}
+				}
+			}else if(n instanceof ReturnStmt){
+				Type ret = ((ReturnStmt) n).getReturnValue().getType();
+				if(ret.isArrayType()){
+					throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Returntype must be a primitive type");
+				}
+				for(int i = list.size()-1;i>0;i--){
+					if(list.get(i) instanceof FuncDecl){
+						FuncDecl fd = (FuncDecl) list.get(i);
+						if(fd.getType().isArrayType()){
+							throw new InternalCompilerErrorRuntimeException(fd.getFile() + ": "+ fd.getLine() + ": "+ fd.getIdentifier().getName() + ": Returntype must be a primitive type");
+						}
+						if(!ret.equals(fd.getType())){
+							if(fd.getType().equals(Type.getIntType())){
+								Real2Int r2i = new Real2Int(((ReturnStmt) n).getReturnValue().getFile(), ((ReturnStmt) n).getReturnValue().getLine(), ((ReturnStmt) n).getReturnValue());
+								((ReturnStmt) n).setReturnValue(r2i);
+							}else{
+								Int2Real i2r = new Int2Real(((ReturnStmt) n).getReturnValue().getFile(), ((ReturnStmt) n).getReturnValue().getLine(), ((ReturnStmt) n).getReturnValue());
+								((ReturnStmt) n).setReturnValue(i2r);
+							}
+						}
+					}
+				}
+			} else if(n instanceof FuncCall) {
+				((FuncCall) n).setType(((FuncCall) n).getIdentifier().getType());
+				Program root = (Program) list.get(0);
+				Iterable<Decl> it = root.getDeclarations();
+				for(Decl dec: it) {
+					if(dec instanceof FuncDecl){
+						if(dec.getIdentifier().getName().compareTo(((FuncCall) n).getIdentifier().getName())== 0){
+							if((((FuncDecl) dec).getParameterList() == null ||((FuncCall) n).getArgList() == null) && !(((FuncDecl) dec).getParameterList() == null && ((FuncCall) n).getArgList() == null)) {
+								throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + ": Wrong number of arguments!");
+							}else{
+								if(((FuncDecl) dec).getParameterList().size() != ((FuncCall)n).getArgList().size()){
+									throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + ": Wrong number of arguments! Right number of arguments is: " + ((FuncDecl)dec).getParameterList().size());			
+								}else{
+									ParList pl = ((FuncDecl) dec).getParameterList();
+									ArgList al = ((FuncCall) n).getArgList();
+									for(int i=0;i<pl.size();i++){
+										if(pl.get(i).getType().isArrayType()){
+											throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + "Only primitive types are allowed as parameters in declaration of function");
+										}
+										if(al.get(i).getType().isArrayType()){
+											throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + "Only primitive types are allowed as arguments in function call");
+										}else if(!pl.get(i).getType().equals(al.get(i).getType())){
+											if(pl.get(i).getType().isIntType()){
+												Real2Int r2i = new Real2Int(al.get(i).getFile(),al.get(i).getLine(),al.get(i));
+												al.addParam(r2i, i);
+											}else{
+												Int2Real i2r = new Int2Real(al.get(i).getFile(),al.get(i).getLine(),al.get(i));
+												al.addParam(i2r, i);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			} else if(n instanceof ArrayAccess) {
+				((ArrayAccess) n).setType(((ArrayAccess) n).getIdentifier().getType().getArrayElementType());
+				if(((ArrayAccess)n).getNumIndices() != ((ArrayAccess) n).getIdentifier().getType().getNumDimensions()){
+					throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + "Wrong number of indices, array has " + ((ArrayAccess) n).getIdentifier().getType().getNumDimensions() + " dimensions");
+				}
+				for(int i = 0; i < ((ArrayAccess)n).getNumIndices(); i++) {
+					if(!((ArrayAccess) n).getIndex(i).getType().isIntType()) {
+						throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Indices of array must be an int type");
+					}
+				}
+			}
+			
 		}
 	}
 
@@ -131,11 +166,11 @@ public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements A
 	 * @param name
 	 *            set the name to this
 	 */
-	public ReduceASTVisitor(final String name) {
+	public TypeCheckASTVisitor(final String name) {
 		super(name);
-		list = new ArrayList<ASTNode>();
 		errors = 0;
 		this.name = name;
+		list = new ArrayList<ASTNode>();
 	}
 	
 	

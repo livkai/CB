@@ -1,5 +1,7 @@
 package frontend.ast;
 
+import common.Type;
+
 import frontend.visitors.ASTVisitor;
 
 /**
@@ -9,6 +11,7 @@ public abstract class Expr extends ASTNode {
     /*
      * More to come here.
      */
+	protected Type type;
 
     /**
      * Create a new Expr
@@ -21,4 +24,13 @@ public abstract class Expr extends ASTNode {
     protected Expr(final String file, final int line) {
         super(file, line);
     }
+    
+    public Type getType() {
+    	return type;
+    }
+    
+    public void setType(Type t) {
+    	type = t;
+    }
+    
 }

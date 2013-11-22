@@ -475,4 +475,22 @@ public class ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 	}
 
 
+	public R visit(Int2Real astnode, P param) {
+		// TODO Auto-generated method stub
+		prolog(astnode);
+		astnode.getExpr().accept(this, param);
+		epilog(astnode);
+		return null;
+	}
+	
+	public R visit(Real2Int astnode, P param) {
+		// TODO Auto-generated method stub
+		prolog(astnode);
+		astnode.getExpr().accept(this, param);
+		epilog(astnode);
+		return null;
+	}
+
+
+
 }
