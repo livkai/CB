@@ -60,4 +60,8 @@ public final class Identifier extends Expr {
     	variable = v;
     }
     
+    public Variable getVariable() {
+    	return variable;
+    }
+    
 }

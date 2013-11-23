@@ -1,6 +1,13 @@
 package frontend.visitors;
 
+
+import java.util.ArrayList;
+import common.*;
+
+import java.util.Iterator;
+
 import frontend.ast.*;
+import frontend.util.Symboltable;
 
 /**
  * Adapter class that visits all ASTNodes and performs NO action on them.
@@ -11,18 +18,20 @@ import frontend.ast.*;
  * @param <R>
  *          The type of the value returned by each visit method
  */
-public class ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
+public class TypeASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 
 	/** variable hold number of errors that occured during the Visitor run */
 	protected int errors;
 	/** name of the visitor */
-	protected final String name;
+	protected  String name;
+	protected ArrayList<ASTNode> list;
 
 	/**
 	 * Default prolog. Does nothing.
 	 * @see frontend.visitors.ASTVisitor#prolog ASTVisitor.prolog
 	 */
 	public void prolog(ASTNode n) {
+		list.add(n);
 		
 	}
 
@@ -31,38 +40,29 @@ public class ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 	 * @see frontend.visitors.ASTVisitor#epilog ASTVisitor.epilog
 	 */
 	public void epilog(ASTNode n) {
-
+		list.remove(list.size()-1);
+		if(!list.isEmpty()) {
+			ASTNode parent = list.get(list.size()-1);
+			if(n instanceof Identifier ) {
+				
+			}
+		}
 	}
 
 	/**
-	 * Creates a new ASTVisitorAdapter
+	 * Creates a new DumpASTVisitor
 	 * 
 	 * @param name
 	 *            set the name to this
 	 */
-	public ASTVisitorAdapter(final String name) {
+	public TypeASTVisitor(final String name) {
+		super(name);
 		errors = 0;
 		this.name = name;
+		list = new ArrayList<ASTNode>();
 	}
-
-	/**
-	 * Returns the number of errors that occurred during processing
-	 * 
-	 * @return number of errors
-	 */
-	public final int getErrors() {
-		return errors;
-	}
-
-	/**
-	 * Returns the name of the ASTVisitor
-	 * 
-	 * @return name
-	 */
-	public final String getName() {
-		return name;
-	}
-
+	
+	
 	/**
 	 * Visit this ASTNode (visitor pattern)
 	 * 
@@ -291,7 +291,9 @@ public class ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 	public R visit(final FuncCall astnode, final P param) {
 		prolog(astnode);
 		astnode.getIdentifier().accept(this, param);
-		astnode.getArgList().accept(this, param);
+		if(astnode.getArgList() != null) {
+			astnode.getArgList().accept(this, param);
+		}
 		epilog(astnode);
 		return null;
 	}
@@ -472,24 +474,6 @@ public class ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 		for(Expr it : astnode.getType().getDimensions()) {
 			it.accept(this, param);
 		}
-	}
-
-
-
-	public R visit(Int2Real astnode, P param) {
-		// TODO Auto-generated method stub
-		prolog(astnode);
-		astnode.getExpr().accept(this, param);
-		epilog(astnode);
-		return null;
-	}
-	
-	public R visit(Real2Int astnode, P param) {
-		// TODO Auto-generated method stub
-		prolog(astnode);
-		astnode.getExpr().accept(this, param);
-		epilog(astnode);
-		return null;
 	}
 
 
