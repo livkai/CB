@@ -67,6 +67,10 @@ public final class ArgList extends ASTNode {
     public final void addParam(Expr param) {
         params.add(param);
     }
+    
+    public void addParam(Expr param, int i){
+    	params.set(i, param);
+    }
 
     /**
      * Return the parameters

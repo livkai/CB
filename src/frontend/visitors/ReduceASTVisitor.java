@@ -28,7 +28,7 @@ public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements A
 
 
 	/**
-	 * Default prolog. Does nothing.
+	 * prolog. 
 	 * @see frontend.visitors.ASTVisitor#prolog ASTVisitor.prolog
 	 */
 	public void prolog(ASTNode n) {
@@ -36,22 +36,25 @@ public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements A
 	}
 
 	/**
-	 * Default epilog. Does nothing. 
+	 * epilog.  
 	 * @see frontend.visitors.ASTVisitor#epilog ASTVisitor.epilog
 	 */
 	public void epilog(ASTNode n) {
 		list.remove(list.size()-1);
 		if(!list.isEmpty()) {
 			ASTNode parent = list.get(list.size()-1);
+			//test if n is an expression which can be simplified
 			if(n instanceof ADDExpr || n instanceof SUBExpr || n instanceof MULTerm || n instanceof DIVTerm){
 				if(((BinExpr) n).getLeft() instanceof Const  && ((BinExpr) n).getRight() instanceof Const) {
 					Const newConst = null;
 					if(n instanceof ADDExpr) { 
+						//tests if value is from type 'real' or 'int'
 						if(((Const) ((ADDExpr) n).getLeft()).getNumber().contains(".") || ((Const) ((ADDExpr) n).getRight()).getNumber().contains(".")){
 							Double newNumber = new Double(((Const) ((ADDExpr) n).getLeft()).toDouble() + ((Const) ((ADDExpr) n).getRight()).toDouble());
 							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
 						}else{
 							Integer newNumber = new Integer(((Const) ((ADDExpr) n).getLeft()).toInt() + ((Const) ((ADDExpr) n).getRight()).toInt());
+							//create the new constant
 							newConst = new Const(newNumber.toString(),n.getFile(),n.getLine());
 						}	
 					}
@@ -123,7 +126,7 @@ public class ReduceASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements A
 	}
 
 	/**
-	 * Creates a new DumpASTVisitor
+	 * Creates a new ReduceASTVisitor
 	 * 
 	 * @param name
 	 *            set the name to this

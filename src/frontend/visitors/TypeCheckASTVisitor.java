@@ -3,11 +3,8 @@ package frontend.visitors;
 
 import java.util.ArrayList;
 import common.*;
-
-import java.util.Iterator;
-
 import frontend.ast.*;
-import frontend.util.Symboltable;
+
 
 /**
  * Adapter class that visits all ASTNodes and performs NO action on them.
@@ -18,68 +15,20 @@ import frontend.util.Symboltable;
  * @param <R>
  *          The type of the value returned by each visit method
  */
-public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
+public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 
 	/** variable hold number of errors that occured during the Visitor run */
 	protected int errors;
 	/** name of the visitor */
 	protected  String name;
-	protected Symboltable st;
+	protected ArrayList<ASTNode> list;
 
 	/**
 	 * prolog. 
 	 * @see frontend.visitors.ASTVisitor#prolog ASTVisitor.prolog
 	 */
 	public void prolog(ASTNode n) {
-		if(n instanceof Program) {
-			//create a new block
-			st.enterBlock();
-			//add predefined functions
-			Variable v0 = new Variable("readInt", Type.getIntType());
-			v0.setDepth(0);
-			Variable v1 = new Variable("readChar", Type.getIntType());
-			v1.setDepth(0);
-			Variable v2 = new Variable("readReal", Type.getRealType());
-			v2.setDepth(0);
-			Variable v3 = new Variable("writeInt", Type.getIntType());
-			v3.setDepth(0);
-			Variable v4 = new Variable("writeChar", Type.getIntType());
-			v4.setDepth(0);
-			Variable v5 = new Variable("writeReal", Type.getIntType());
-			v5.setDepth(0);
-			st.addVariable(v0);
-			st.addVariable(v1);
-			st.addVariable(v2);
-			st.addVariable(v3);
-			st.addVariable(v4);
-			st.addVariable(v5);
-			
-		} else if( n instanceof Block ){
-			st.enterBlock();
-		} else if(n instanceof Identifier) {
-			//search for variable
-			Variable v = st.getVariable(((Identifier) n).getName());
-			if(v != null) {
-				//found: add it in identifier
-				((Identifier) n).setVariable(v);
-			}else {
-				throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((Identifier) n).getName() + " cannot be resolved to a variable!");
-			}
-		} else if(n instanceof FuncDecl){
-			//register variable in symboltable
-			int flag = 0;
-			Variable fd = new Variable(((FuncDecl) n).getName(), ((FuncDecl) n).getType(), n.getFile(), n.getLine(), flag);
-			fd.setDepth(0);
-			st.addVariable(fd);
-			st.enterBlock();
-		} else if(n instanceof VarDecl) {
-			int flag = 1;
-			//register variable in symboltable
-			Variable vd = new Variable(((VarDecl) n).getName(), ((VarDecl) n).getType(), n.getFile(), n.getLine(), flag);
-			vd.setDepth(st.getDepth());
-			st.addVariable(vd);
-		}
-		
+		list.add(n);
 	}
 
 	/**
@@ -87,22 +36,171 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	 * @see frontend.visitors.ASTVisitor#epilog ASTVisitor.epilog
 	 */
 	public void epilog(ASTNode n) {
-		if(n instanceof Program || n instanceof Block || n instanceof FuncDecl) {
-			st.leaveBlock();
+		list.remove(list.size()-1);
+		if(!list.isEmpty()) {
+			if(n instanceof BinExpr) {
+				Type leftType = ((BinExpr) n).getLeft().getType();
+				Type rightType = ((BinExpr) n).getRight().getType();
+				if(n instanceof ADDExpr || n instanceof SUBExpr || n instanceof MULTerm || n instanceof DIVTerm){
+					//add type-info from child-nodes
+					if(leftType.equals(rightType)) {
+						((BinExpr) n).setType(leftType);
+					}else {
+						//children have different types -> add cast node
+						if(leftType.equals(Type.getIntType())) {
+							Int2Real i2r = new Int2Real(((BinExpr) n).getLeft().getFile(), ((BinExpr) n).getLeft().getLine(), ((BinExpr) n).getLeft());
+							((BinExpr) n).setLeft(i2r);
+							((BinExpr) n).setType(Type.getRealType());
+						}else if(leftType.equals(Type.getRealType())){
+							Int2Real i2r = new Int2Real(((BinExpr) n).getRight().getFile(), ((BinExpr) n).getRight().getLine(), ((BinExpr) n).getRight());
+							((BinExpr) n).setRight(i2r);
+							((BinExpr) n).setType(Type.getRealType());
+						}
+						else{
+							//invalid type
+							throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Invalid arithmetic operation between arraytype and primitive type");
+						}
+					}
+				}
+			}
+			else if(n instanceof Const) {
+				//add type-info to constants
+				if(((Const) n).getNumber().contains(".")) {
+					((Const) n).setType(Type.getRealType());
+				}else {
+					((Const) n).setType(Type.getIntType());
+				}
+			}else if(n instanceof Identifier) {
+				//add type-info to Identifiers
+				((Identifier) n).setType(((Identifier) n).getVariable().getType());
+			}else if(n instanceof AssgnStmt) {
+				Type leftType = ((AssgnStmt) n).getLValue().getType();
+				Type rightType = ((AssgnStmt) n).getExpr().getType();
+				//children have different types -> add cast node
+				if(!(leftType.equals(rightType))) {
+					if(leftType.equals(Type.getIntType())) {
+						Real2Int r2i = new Real2Int(((AssgnStmt) n).getExpr().getFile(), ((AssgnStmt) n).getExpr().getLine(), ((AssgnStmt) n).getExpr());
+						((AssgnStmt) n).setExpr(r2i);
+					}else if(leftType.equals(Type.getRealType())){
+						Int2Real i2r = new Int2Real(((AssgnStmt) n).getExpr().getFile(), ((AssgnStmt) n).getExpr().getLine(), ((AssgnStmt) n).getExpr());
+						((AssgnStmt) n).setExpr(i2r);
+					}else {
+						//invalid type
+						throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Invalid assignment between arraytype and primitive type");
+					}
+				}
+			}else if(n instanceof ReturnStmt){
+				Type ret = ((ReturnStmt) n).getReturnValue().getType();
+				//only primitive types allowed in ReturnStmt and also no FuncCalls allowed 
+				/*if(((ReturnStmt) n).getReturnValue().getVariable() != null) {
+					System.out.println("getRetVariable: "  + ((ReturnStmt) n).getReturnValue().getVariable() + "my flag: " + ((ReturnStmt) n).getReturnValue().getVariable().getFlag());
+					
+				}
+				System.out.println("blubb!");
+				*/if(!ret.isPrimitiveType() || 
+				  (((ReturnStmt) n).getReturnValue().getVariable() != null && ((ReturnStmt) n).getReturnValue().getVariable().getFlag() != 1)){
+					throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Returntype must be a primitive type");
+				} 
+/*				if(((ReturnStmt) n).getReturnValue().getVariable() != null) {
+					if(((ReturnStmt) n).getReturnValue().getVariable().getFlag() != 1){
+						throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Returntype must be a primitive type");
+					}
+				}*/
+				for(int i = list.size()-1;i>0;i--){
+					if(list.get(i) instanceof FuncDecl){
+						FuncDecl fd = (FuncDecl) list.get(i);
+						//no arrays allowed in FuncDecl
+						if(fd.getType().isArrayType()){
+							throw new InternalCompilerErrorRuntimeException(fd.getFile() + ": "+ fd.getLine() + ": "+ fd.getIdentifier().getName() + ": Returntype must be a primitive type");
+						}
+						//test if ReturnStmt has same type as defined in FuncDecl
+						// -> if not, add cast node
+						if(!ret.equals(fd.getType())){
+							if(fd.getType().equals(Type.getIntType())){
+								Real2Int r2i = new Real2Int(((ReturnStmt) n).getReturnValue().getFile(), ((ReturnStmt) n).getReturnValue().getLine(), ((ReturnStmt) n).getReturnValue());
+								((ReturnStmt) n).setReturnValue(r2i);
+							}else{
+								Int2Real i2r = new Int2Real(((ReturnStmt) n).getReturnValue().getFile(), ((ReturnStmt) n).getReturnValue().getLine(), ((ReturnStmt) n).getReturnValue());
+								((ReturnStmt) n).setReturnValue(i2r);
+							}
+						}
+					}
+				}
+			} else if(n instanceof FuncCall) {
+				//add type-info to FuncCall
+				((FuncCall) n).setType(((FuncCall) n).getIdentifier().getType());
+				Program root = (Program) list.get(0);
+				Iterable<Decl> it = root.getDeclarations();
+				//search in all declarations for the corresponding FuncDecl 
+				for(Decl dec: it) {
+					if(dec instanceof FuncDecl){
+						if(dec.getIdentifier().getName().compareTo(((FuncCall) n).getIdentifier().getName())== 0){
+							ParList pl = ((FuncDecl) dec).getParameterList();
+							ArgList al = ((FuncCall) n).getArgList();
+							//no match between FuncCall and FuncDecl if only one has no arguments
+							if((pl.size() == 0 && al != null) || (pl.size() != 0 && al == null)) {
+								throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + ": Wrong number of arguments!");
+							}else{
+								//no match between FuncCall and FuncDecl -> different number of arguments
+								if((al != null) && (pl.size() != al.size())){
+									throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + ": Wrong number of arguments! Right number of arguments is: " + ((FuncDecl)dec).getParameterList().size());			
+								}else{
+									for(int i=0;i<pl.size();i++){
+										//parameter must be a primitive type
+										if(!(pl.get(i).getType().isPrimitiveType()) || 
+										     pl.get(i).getIdentifier().getVariable().getFlag() != 1){
+											throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + "Only primitive types are allowed as parameters in declaration of function");
+										}
+										//argument must be a primitive type					
+										if(!(al.get(i).getType().isPrimitiveType()) || 
+										  ((al.get(i).getVariable() != null) && al.get(i).getVariable().getFlag() != 1)){
+											throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + "Only primitive types are allowed as arguments in function call");
+										} 
+										else if(!pl.get(i).getType().equals(al.get(i).getType())){
+											//children have different types -> add cast node
+											if(pl.get(i).getType().isIntType()){
+												Real2Int r2i = new Real2Int(al.get(i).getFile(),al.get(i).getLine(),al.get(i));
+												al.addParam(r2i, i);
+											}else {
+												Int2Real i2r = new Int2Real(al.get(i).getFile(),al.get(i).getLine(),al.get(i));
+												al.addParam(i2r, i);
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			} else if(n instanceof ArrayAccess) {
+				//add type-info for ArrayAccess
+				((ArrayAccess) n).setType(((ArrayAccess) n).getIdentifier().getType().getArrayElementType());
+				//check dimension of the array
+				if(((ArrayAccess)n).getNumIndices() != ((ArrayAccess) n).getIdentifier().getType().getNumDimensions()){
+					throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + "Wrong number of indices, array has " + ((ArrayAccess) n).getIdentifier().getType().getNumDimensions() + " dimensions");
+				}
+				for(int i = 0; i < ((ArrayAccess)n).getNumIndices(); i++) {
+					//indices must be from type int
+					if(!((ArrayAccess) n).getIndex(i).getType().isIntType()) {
+						throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Indices of array must be an int type");
+					}
+				}
+			}
+			
 		}
 	}
 
 	/**
-	 * Creates a new SympbolTableASTVisitor
+	 * Creates a new TypeCheckASTVisitor
 	 * 
 	 * @param name
 	 *            set the name to this
 	 */
-	public SymbolTableASTVisitor(final String name) {
+	public TypeCheckASTVisitor(final String name) {
 		super(name);
 		errors = 0;
 		this.name = name;
-		st = new Symboltable();
+		list = new ArrayList<ASTNode>();
 	}
 	
 	

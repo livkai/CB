@@ -61,7 +61,7 @@ public final class Const extends Expr {
     	// TODO: implement this Method!
     	return i;
     }
-    
+
     public double toDouble(){
     	double i = 0;
     	try {
@@ -77,4 +77,5 @@ public final class Const extends Expr {
     	return number;
     }
     
+
 }

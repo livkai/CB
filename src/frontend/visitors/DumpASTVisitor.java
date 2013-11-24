@@ -176,7 +176,7 @@ public class DumpASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implements AST
 	 * @param astnode
 	 *            ASTNode to visit
 	 */
-	public R visit(Stringfinal AssgnStmt astnode, final P param) {
+	public R visit(final AssgnStmt astnode, final P param) {
 		prolog(astnode);
 		astnode.getLValue().accept(this, param);
 		astnode.getExpr().accept(this, param);
