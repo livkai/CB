@@ -27,23 +27,25 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	protected Symboltable st;
 
 	/**
-	 * Default prolog. Does nothing.
+	 * prolog. 
 	 * @see frontend.visitors.ASTVisitor#prolog ASTVisitor.prolog
 	 */
 	public void prolog(ASTNode n) {
 		if(n instanceof Program) {
+			//create a new block
 			st.enterBlock();
-			Variable v0 = new Variable("readInt", Type.getIntType());
+			//add predefined functions
+			Variable v0 = new Variable("readInt", Type.getIntType(),0);
 			v0.setDepth(0);
-			Variable v1 = new Variable("readChar", Type.getIntType());
+			Variable v1 = new Variable("readChar", Type.getIntType(),0);
 			v1.setDepth(0);
-			Variable v2 = new Variable("readReal", Type.getRealType());
+			Variable v2 = new Variable("readReal", Type.getRealType(),0);
 			v2.setDepth(0);
-			Variable v3 = new Variable("writeInt", Type.getIntType());
+			Variable v3 = new Variable("writeInt", Type.getIntType(),0);
 			v3.setDepth(0);
-			Variable v4 = new Variable("writeChar", Type.getIntType());
+			Variable v4 = new Variable("writeChar", Type.getIntType(),0);
 			v4.setDepth(0);
-			Variable v5 = new Variable("writeReal", Type.getIntType());
+			Variable v5 = new Variable("writeReal", Type.getIntType(),0);
 			v5.setDepth(0);
 			st.addVariable(v0);
 			st.addVariable(v1);
@@ -55,25 +57,25 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 		} else if( n instanceof Block ){
 			st.enterBlock();
 		} else if(n instanceof Identifier) {
+			//search for variable
 			Variable v = st.getVariable(((Identifier) n).getName());
 			if(v != null) {
+				//found: add it in identifier
 				((Identifier) n).setVariable(v);
 			}else {
 				throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((Identifier) n).getName() + " cannot be resolved to a variable!");
 			}
 		} else if(n instanceof FuncDecl){
-			Variable fd = new Variable(((FuncDecl) n).getName(), ((FuncDecl) n).getType(), n.getFile(), n.getLine());
+			//register variable in symboltable
+			int flag = 0;
+			Variable fd = new Variable(((FuncDecl) n).getName(), ((FuncDecl) n).getType(), n.getFile(), n.getLine(), flag);
 			fd.setDepth(0);
 			st.addVariable(fd);
 			st.enterBlock();
-		/*	ParList pl = ((FuncDecl) n).getParameterList();
-			for(int i = 0; i < pl.size(); i++) {
-				Variable var = new Variable(pl.get(i).getName(), pl.get(i).getType(), pl.getFile(), pl.getLine());
-				var.setDepth(1);
-				st.addVariable(var);
-			}*/
 		} else if(n instanceof VarDecl) {
-			Variable vd = new Variable(((VarDecl) n).getName(), ((VarDecl) n).getType(), n.getFile(), n.getLine());
+			int flag = 1;
+			//register variable in symboltable
+			Variable vd = new Variable(((VarDecl) n).getName(), ((VarDecl) n).getType(), n.getFile(), n.getLine(), flag);
 			vd.setDepth(st.getDepth());
 			st.addVariable(vd);
 		}
@@ -81,17 +83,23 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	}
 
 	/**
-	 * Default epilog. Does nothing. 
+	 * epilog.
 	 * @see frontend.visitors.ASTVisitor#epilog ASTVisitor.epilog
 	 */
 	public void epilog(ASTNode n) {
 		if(n instanceof Program || n instanceof Block || n instanceof FuncDecl) {
+			//check wether a function 'main' was declared
+			if(n instanceof Program){
+				if(st.getVariable("main") == null){
+					throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": The function 'main' is not declared!");
+				}
+			}
 			st.leaveBlock();
 		}
 	}
 
 	/**
-	 * Creates a new DumpASTVisitor
+	 * Creates a new SympbolTableASTVisitor
 	 * 
 	 * @param name
 	 *            set the name to this

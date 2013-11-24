@@ -22,6 +22,8 @@ import frontend.visitors.ASTVisitor;
 import frontend.visitors.DumpASTVisitor;
 import frontend.visitors.ReduceASTVisitor;
 import frontend.visitors.SymbolTableASTVisitor;
+import frontend.visitors.TypeCheckASTVisitor;
+
 
 /**
  * Main class for the mcc compiler
@@ -270,8 +272,11 @@ public final class Compiler {
 		ArrayList<ASTVisitor<?,?>> astvisitors = new ArrayList<ASTVisitor<?,?>>();
 		ReduceASTVisitor reduceVisitor = new ReduceASTVisitor(inputFile);
 		astvisitors.add(reduceVisitor);
+
 		SymbolTableASTVisitor stVisitor = new SymbolTableASTVisitor(inputFile);
 		astvisitors.add(stVisitor);
+		TypeCheckASTVisitor typeVisitor = new TypeCheckASTVisitor(inputFile);
+		astvisitors.add(typeVisitor);
 		/*
 		 * TODO for exercise 2 and later: Add visitors to traverse the AST here.
 		 */

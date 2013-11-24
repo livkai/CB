@@ -1,7 +1,7 @@
 package frontend.ast;
 
-import common.Variable;
 
+import common.Variable;
 import frontend.visitors.ASTVisitor;
 
 /**
@@ -11,6 +11,9 @@ public final class Identifier extends Expr {
 
     private final String name;
 //    private Variable variable;
+    private Variable variable;
+
+
 
     /**
      * Creates a new Identifier
@@ -55,4 +58,12 @@ public final class Identifier extends Expr {
     public final String toString() {
         return "id: " + name;
     }
+  /*  public void setVariable(Variable v) {
+    	variable = v;
+    }
+    
+    public Variable getVariable() {
+    	return variable;
+    }
+*/
 }
