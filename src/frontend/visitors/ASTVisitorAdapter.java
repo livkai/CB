@@ -475,7 +475,6 @@ public class ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 	}
 
 
-<<<<<<< HEAD
 	public R visit(Int2Real astnode, P param) {
 		// TODO Auto-generated method stub
 		prolog(astnode);
@@ -491,8 +490,4 @@ public class ASTVisitorAdapter<P, R> implements ASTVisitor<P, R> {
 		epilog(astnode);
 		return null;
 	}
-
-
-=======
->>>>>>> dd6208e07af8792917057b42ca34b23adb7411c5
 }

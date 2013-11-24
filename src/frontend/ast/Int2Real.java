@@ -2,7 +2,7 @@ package frontend.ast;
 
 import frontend.visitors.ASTVisitor;
 
-public class Int2Real extends ASTNode {
+public class Int2Real extends Expr {
 	
 	private double doubleValue;
 	private Expr intExpr;

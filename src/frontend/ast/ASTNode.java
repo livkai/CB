@@ -1,5 +1,7 @@
 package frontend.ast;
 
+import common.Variable;
+
 import frontend.visitors.ASTVisitor;
 
 /**
@@ -10,6 +12,8 @@ public abstract class ASTNode {
     private final int line;
 
     private final String file;
+    
+    private  Variable var;
 
     /**
      * Creates a new ASTNode
@@ -22,6 +26,7 @@ public abstract class ASTNode {
     protected ASTNode(final String file, final int line) {
         this.file = file;
         this.line = line;
+        var = null;
     }
 
     /**
@@ -58,6 +63,19 @@ public abstract class ASTNode {
      */
     public final String getFile() {
         return file;
+    }
+    
+    /**
+     * Returns the file in which this ASTNode occurred.
+     * 
+     * @return file name.
+     */
+    public final Variable getVariable() {
+        return var;
+    }
+    
+    public void setVariable(Variable var){
+    	this.var = var;
     }
 
     /**
