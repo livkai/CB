@@ -31,54 +31,6 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	 * @see frontend.visitors.ASTVisitor#prolog ASTVisitor.prolog
 	 */
 	public void prolog(ASTNode n) {
-		if(n instanceof Program) {
-			//create a new block
-			st.enterBlock();
-			//add predefined functions
-			Variable v0 = new Variable("readInt", Type.getIntType(),0);
-			v0.setDepth(0);
-			Variable v1 = new Variable("readChar", Type.getIntType(),0);
-			v1.setDepth(0);
-			Variable v2 = new Variable("readReal", Type.getRealType(),0);
-			v2.setDepth(0);
-			Variable v3 = new Variable("writeInt", Type.getIntType(),0);
-			v3.setDepth(0);
-			Variable v4 = new Variable("writeChar", Type.getIntType(),0);
-			v4.setDepth(0);
-			Variable v5 = new Variable("writeReal", Type.getIntType(),0);
-			v5.setDepth(0);
-			st.addVariable(v0);
-			st.addVariable(v1);
-			st.addVariable(v2);
-			st.addVariable(v3);
-			st.addVariable(v4);
-			st.addVariable(v5);
-			
-		} else if( n instanceof Block ){
-			st.enterBlock();
-		} else if(n instanceof Identifier) {
-			//search for variable
-			Variable v = st.getVariable(((Identifier) n).getName());
-			if(v != null) {
-				//found: add it in identifier
-				((Identifier) n).setVariable(v);
-			}else {
-				throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((Identifier) n).getName() + " cannot be resolved to a variable!");
-			}
-		} else if(n instanceof FuncDecl){
-			//register variable in symboltable
-			int flag = 0;
-			Variable fd = new Variable(((FuncDecl) n).getName(), ((FuncDecl) n).getType(), n.getFile(), n.getLine(), flag);
-			fd.setDepth(0);
-			st.addVariable(fd);
-			st.enterBlock();
-		} else if(n instanceof VarDecl) {
-			int flag = 1;
-			//register variable in symboltable
-			Variable vd = new Variable(((VarDecl) n).getName(), ((VarDecl) n).getType(), n.getFile(), n.getLine(), flag);
-			vd.setDepth(st.getDepth());
-			st.addVariable(vd);
-		}
 		
 	}
 
@@ -88,7 +40,7 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	 */
 	public void epilog(ASTNode n) {
 		if(n instanceof Program || n instanceof Block || n instanceof FuncDecl) {
-			//check wether a function 'main' was declared
+			//check whether a function 'main' was declared
 			if(n instanceof Program){
 				if(st.getVariable("main") == null){
 					throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": The function 'main' is not declared!");
@@ -118,39 +70,40 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	 * @param astnode
 	 *            ASTNode to visit
 	 */
-	public R visit(final ADDExpr astnode, final P param) {
+	public R visit(final Program astnode, final P param) {
 		prolog(astnode);
-		binexpr(astnode, param);
+		//create a new block
+		st.enterBlock();
+		//add predefined functions
+		Variable v0 = new Variable("readInt", new FuncType(Type.getIntType(),new ArrayList<Type>()));
+		v0.setDepth(0);
+		Variable v1 = new Variable("readChar", new FuncType(Type.getIntType(),new ArrayList<Type>()));
+		v1.setDepth(0);
+		Variable v2 = new Variable("readReal", new FuncType(Type.getRealType(),new ArrayList<Type>()));
+		v2.setDepth(0);
+		ArrayList<Type> params = new ArrayList<Type>();
+		params.add(Type.getIntType());
+		Variable v3 = new Variable("writeInt", new FuncType(Type.getIntType(),params));
+		v3.setDepth(0);
+		Variable v4 = new Variable("writeChar", new FuncType(Type.getIntType(),params));
+		v4.setDepth(0);
+		params.remove(0);
+		params.add(Type.getRealType());
+		Variable v5 = new Variable("writeReal", new FuncType(Type.getIntType(),params));
+		v5.setDepth(0);
+		st.addVariable(v0);
+		st.addVariable(v1);
+		st.addVariable(v2);
+		st.addVariable(v3);
+		st.addVariable(v4);
+		st.addVariable(v5);
+		for(Decl it : astnode.getDeclarations()) {
+			it.accept(this, param);
+		}
 		epilog(astnode);
 		return null;
 	}
 
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final ANDExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final AssgnStmt astnode, final P param) {
-		prolog(astnode);
-		astnode.getLValue().accept(this, param);
-		astnode.getExpr().accept(this, param);
-		epilog(astnode);
-		return null;
-	}
 
 	/**
 	 * Visit this ASTNode (visitor pattern)
@@ -160,6 +113,7 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	 */
 	public R visit(final Block astnode, final P param) {
 		prolog(astnode);
+		st.enterBlock();
 		astnode.getVarDeclList().accept(this, param);
 		astnode.getStmtList().accept(this, param);
 		epilog(astnode);
@@ -172,46 +126,18 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	 * @param astnode
 	 *            ASTNode to visit
 	 */
-	public R visit(final Const astnode, final P param) {
-		prolog(astnode);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final DIVTerm astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final EQExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
 	public R visit(final FuncDecl astnode, final P param) {
 		prolog(astnode);
+		//register variable in symboltable
+		ArrayList<Type> params = new ArrayList<Type>();
+		for(int i=0;i< astnode.getParameterList().size();i++){
+			params.add(astnode.getParameterList().get(i).getType());
+		}
+		FuncType ft = new FuncType(astnode.getType(),params);
+		Variable fd = new Variable(astnode.getName(), ft, astnode.getFile(), astnode.getLine());
+		fd.setDepth(0);
+		st.addVariable(fd);
+		st.enterBlock();
 		astnode.getParameterList().accept(this, param);
 		astnode.getBody().accept(this, param);
 		decl(astnode, param);
@@ -219,258 +145,7 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 		return null;
 	}
 
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final GEQExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
 
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final GTExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final Identifier astnode, final P param) {
-		prolog(astnode);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final IfStmt astnode, final P param) {
-		prolog(astnode);
-		astnode.getCondition().accept(this, param);
-		astnode.getThenBlock().accept(this, param);
-		Block elseblock = astnode.getElseBlock();
-		if (elseblock != null) {
-			elseblock.accept(this, param);
-		}
-		epilog(astnode);
-		return null;
-	}
-	
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final WhileStmt astnode, final P param) {
-		prolog(astnode);
-		astnode.getCondition().accept(this, param);
-		astnode.getWhileBlock().accept(this, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final LEQExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final LTExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final ArrayAccess astnode, final P param) {
-		prolog(astnode);
-		astnode.getIdentifier().accept(this, param);
-		for(Expr it : astnode.getIndices()) {
-			it.accept(this, param);
-		}
-		epilog(astnode);
-		return null;
-	}
-	
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final FuncCall astnode, final P param) {
-		prolog(astnode);
-		astnode.getIdentifier().accept(this, param);
-		if(astnode.getArgList() != null) {
-			astnode.getArgList().accept(this, param);
-		}
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final MULTerm astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final NEQExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final ORExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final ParList astnode, final P param) {
-		prolog(astnode);
-		for(VarDecl it : astnode.getParams()) {
-			it.accept(this, param);
-		}
-		epilog(astnode);
-		return null;
-	}
-	
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final ArgList astnode, final P param) {
-		prolog(astnode);
-		for(Expr it : astnode.getParams()) {
-			it.accept(this, param);
-		}
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final Program astnode, final P param) {
-		prolog(astnode);
-		for(Decl it : astnode.getDeclarations()) {
-			it.accept(this, param);
-		}
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final ReturnStmt astnode, final P param) {
-		prolog(astnode);
-		astnode.getReturnValue().accept(this, param);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final StmtList astnode, final P param) {
-		prolog(astnode);
-		for(Stmt it : astnode.getStatements()) {
-			it.accept(this, param);
-		}
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final SUBExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
 
 	/**
 	 * Visit this ASTNode (visitor pattern)
@@ -480,6 +155,10 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 	 */
 	public R visit(final VarDecl astnode, final P param) {
 		prolog(astnode);
+		//register variable in symboltable
+		Variable vd = new Variable(astnode.getName(), astnode.getType(), astnode.getFile(), astnode.getLine());
+		vd.setDepth(st.getDepth());
+		st.addVariable(vd);
 		decl(astnode, param);
 		epilog(astnode);
 		return null;
@@ -500,17 +179,6 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 		return null;
 	}
 
-	/**
-	 * Visits a binary expression
-	 * 
-	 * @param astnode
-	 *            The expression
-	 */
-	private void binexpr(final BinExpr astnode, final P param) {
-		astnode.getLeft().accept(this, param);
-		astnode.getRight().accept(this, param);
-		return;
-	}
 
 	/**
 	 * Visits a declaration
@@ -524,6 +192,27 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 			it.accept(this, param);
 		}
 	}
+	
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final Identifier astnode, final P param) {
+		prolog(astnode);
+		//search for variable
+		Variable v = st.getVariable(astnode.getName());
+		if(v != null) {
+			//found: add it in identifier
+			astnode.setVariable(v);
+		}else {
+			throw new InternalCompilerErrorRuntimeException(astnode.getFile() + ": "+ astnode.getLine() + ": "+ astnode.getName() + " cannot be resolved to a variable!");
+		}
+		epilog(astnode);
+		return null;
+	}
+
 
 
 }

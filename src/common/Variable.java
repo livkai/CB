@@ -14,21 +14,18 @@ public class Variable {
 	private int depth;
 	private String file;
 	private int line;
-    private int flag;
     
-	public Variable(String name, Type t, String file, int line, int flag) {
+	public Variable(String name, Type t, String file, int line) {
 		this.name = name;
 		this.type = t;
 		this.file = file;
 		this.line = line;
-		this.flag = flag;
 	}	
-	public Variable(String name, Type t, int flag) {
+	public Variable(String name, Type t) {
 		this.name = name;
 		this.type = t;
 		this.file = null;
 		this.line = -1;
-		this.flag = flag;
 
 	}
 	
@@ -54,13 +51,6 @@ public class Variable {
 	
 	public int getLine(){
 		return line;
-	}
-	
-	public int getFlag() {
-		return flag;
-	}
-	
-
-	
+	}	
 }
 

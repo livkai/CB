@@ -3,6 +3,7 @@ package common;
 import java.util.ArrayList;
 import frontend.ast.Expr;
 import frontend.ast.Const;
+import frontend.ast.VarDecl;
 
 /**
  * A representation of a type.
@@ -13,7 +14,7 @@ public class Type {
 
     private final Type arrayElementType;
     protected final ArrayList<Expr> dimensions = new ArrayList<Expr>();
-
+ 
     /**
      * Creates a new instance of a type object.
      * Consider using the static methods defined below instead of this
@@ -21,6 +22,10 @@ public class Type {
      */
     private Type(final Type arrayElementType) {
         this.arrayElementType = arrayElementType;
+    }
+    
+    public Type(){
+    	this.arrayElementType = null;
     }
 
     /**
@@ -62,6 +67,7 @@ public class Type {
             return Type.addDimension(new Type(arrayElementType), size);
         }
     }
+    
 
     /**
      * Checks whether this type object represents the type "int".
@@ -160,5 +166,6 @@ public class Type {
         arrayType.dimensions.add(size);
         return arrayType;
     }
+    
 }
 

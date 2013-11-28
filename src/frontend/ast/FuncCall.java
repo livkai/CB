@@ -47,7 +47,7 @@ public final class FuncCall extends Expr {
 
         assert (identifier != null) : this.hashCode();
         this.identifier = identifier;
-        this.arglist = null;
+        this.arglist = new ArgList(file, line);
     }
 
     /**

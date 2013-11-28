@@ -10,8 +10,6 @@ import frontend.visitors.ASTVisitor;
 public final class Identifier extends Expr {
 
     private final String name;
-//    private Variable variable;
-    private Variable variable;
 
 
 
