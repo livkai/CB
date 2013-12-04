@@ -113,6 +113,10 @@ public final class IRFunction {
     public void addLocals(Variable var) {
     	locals.add(var);
     }
+    
+    public void addVirtReg(VirtualRegister vr) {
+    	virtregs.add(vr);
+    }
 
     /**
      * Returns the name of the class

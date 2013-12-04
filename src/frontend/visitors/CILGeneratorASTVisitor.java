@@ -4,8 +4,11 @@ package frontend.visitors;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import cil.CSUB;
 import cil.IRFunction;
 import cil.IRProgram;
+import cil.RegisterOperand;
+import cil.VirtualRegister;
 import common.*;
 import frontend.ast.*;
 
@@ -26,6 +29,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	/** name of the visitor */
 	protected  String name;
 	protected ArrayList<ASTNode> list;
+	protected ArrayList<IRFunction> irfuncs;
 
 	/**
 	 * prolog. 
@@ -54,6 +58,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		errors = 0;
 		this.name = name;
 		list = new ArrayList<ASTNode>();
+		irfuncs = new ArrayList<IRFunction>();
 	}
 	
 	
@@ -100,6 +105,13 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		for(int i = 0; i< params.size(); i++) {
 			irf.addParam(params.get(i).getIdentifier().getVariable());
 		}
+		Iterator<VarDecl> vdli = n.getBody().getVarDeclList().getVarDecls().iterator();
+		while(vdli.hasNext()){
+			irf.addLocals(vdli.next().getIdentifier().getVariable());
+		}
+		irfuncs.add(irf);
+//		StmtList sl = n.getBody().getStmtList();
+//		Iterator<Stmt> sli = sl.getStatements().iterator();
 		
 		n.getParameterList().accept(this, param);
 		n.getBody().accept(this, param);
@@ -170,16 +182,16 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		}
 		IRProgram irp = new IRProgram();
 		//Iterator<Decl> iter = astnode.getDeclarations().iterator();
-		Iterator iter = astnode.getDeclarations().iterator();
+		Iterator<Decl> iter = astnode.getDeclarations().iterator();
 		while(iter.hasNext()) {
-			if(iter.next() instanceof FuncDecl) {
-				irp.addFunc((IRFunction) iter.next());
-			}
-			if(iter.next() instanceof VarDecl) {
-				irp.addGlobal(((VarDecl) iter.next()).getIdentifier().getVariable());
+			Decl dec = iter.next();
+			if( dec instanceof VarDecl) {
+				irp.addGlobal(((VarDecl) dec).getIdentifier().getVariable());
 			}
 		}
-		
+		for(int i=0; i < irfuncs.size(); i++){
+			irp.addFunc(irfuncs.get(i));
+		}
 		epilog(astnode);
 		return null;
 	}
@@ -375,6 +387,11 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	public R visit(final SUBExpr astnode, final P param) {
 		prolog(astnode);
+		if(list.get(list.size()-2) instanceof BinExpr){
+			VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+			if(astnode.getLeft() )
+			CSUB cs = new CSUB(new RegisterOperand(vr),);
+		}
 		binexpr(astnode, param);
 		epilog(astnode);
 		return null;

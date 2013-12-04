@@ -130,6 +130,14 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 		if(((FuncDecl) n).getType().isArrayType()){
 			throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": Only primitive types are allowed as return type of a function!");
 		}
+		if(n.getName().compareTo("main")== 0){
+			if(!n.getType().isIntType()){
+				throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": The main function must have INT as return type!");	
+			}
+			if(pl.size() != 0){
+				throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": The main function has no parameter!");				
+			}
+		}
 		
 		n.getParameterList().accept(this, param);
 		n.getBody().accept(this, param);

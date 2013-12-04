@@ -3,7 +3,7 @@ package cil;
 import common.Type;
 
 /**
- * Represtents a virtual register
+ * Represents a virtual register
  */
 public final class VirtualRegister extends Register {
 
