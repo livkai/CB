@@ -65,7 +65,7 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 		n.getLValue().accept(this, param);
 		n.getExpr().accept(this, param);
 		Type leftType = ((AssgnStmt) n).getLValue().getType();
-		Type rightType = ((AssgnStmt) n).getExpr().getType();
+		Type rightType = ((AssgnStmt) n).getExpr().getVariable().getType();
 		//throw exception if the left side of the assignment is an identifier of a function declaration or a funcCall
 		if((((AssgnStmt) n).getLValue().getVariable() != null && ((AssgnStmt) n).getLValue().getVariable().getType() instanceof FuncType) || ((AssgnStmt) n).getLValue() instanceof FuncCall){
 			throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Cannot assign a value to a function!");											
@@ -118,7 +118,15 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 	 */
 	public R visit(final FuncDecl n, final P param) {
 		prolog(n);
-		ParList pl = ((FuncDecl) n).getParameterList();
+		FuncType ft = (FuncType) n.getType();
+		//parameter must be a primitive type
+		for(int i=0; i< ft.getParSize(); i++){
+			if(!(ft.getParType(i).isPrimitiveType())) {
+				throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((VarDecl) ((FuncDecl) n).getParameterList().get(i)).getIdentifier().getName() + ": Only primitive types are allowed as parameters in declaration of function");
+			}
+		}
+		
+		/*ParList pl = ((FuncDecl) n).getParameterList();
 		//parameter must be a primitive type
 		for(int i=0; i< pl.size();i++){
 			if(!pl.get(i).getType().isPrimitiveType()){
@@ -126,7 +134,12 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 			}
 		}
 		//return type of function must be a primitive type
+		 
 		if(((FuncDecl) n).getType().isArrayType()){
+			throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": Only primitive types are allowed as return type of a function!");
+		}*/
+		//return type of function must be a primitive type
+		if(((FuncType) n.getType()).getRetType().isArrayType()) {
 			throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": Only primitive types are allowed as return type of a function!");
 		}
 		n.getParameterList().accept(this, param);
@@ -198,8 +211,6 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 		if(!(((FuncCall) n).getIdentifier().getVariable().getType() instanceof FuncType)){
 			throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + " is a variable, not a function!");						
 		}
-		//add type-info to FuncCall
-		((FuncCall) n).setType(((FuncType)((FuncCall) n).getIdentifier().getType()).getRetType());
 		Program root = (Program) list.get(0);
 		Iterable<Decl> it = root.getDeclarations();
 		//search in all declarations for the corresponding FuncDecl 
@@ -208,23 +219,24 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 				if(dec.getIdentifier().getName().compareTo(((FuncCall) n).getIdentifier().getName())== 0){
 					ParList pl = ((FuncDecl) dec).getParameterList();
 					ArgList al = ((FuncCall) n).getArgList();
+					FuncType ft = (FuncType) dec.getType();
 					//no match between FuncCall and FuncDecl if only one has no arguments
-					if((pl.size() == 0 && al.size() != 0) || (pl.size() != 0 && al.size() == 0)) {
+					if((ft.getParSize() == 0 && al.size() != 0) || (ft.getParSize() != 0 && al.size() == 0)) {
 						throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + ": Wrong number of arguments!");
 					}else{
 						//no match between FuncCall and FuncDecl -> different number of arguments
-						if(pl.size() != al.size()){
+						if(ft.getParSize() != al.size()){
 							throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + ": Wrong number of arguments! Right number of arguments is: " + ((FuncDecl)dec).getParameterList().size());			
 						}else{
-							for(int i=0;i<pl.size();i++){
+							for(int i=0;i<ft.getParSize();i++){
 								//argument must be a primitive type					
 								if(!(al.get(i).getType().isPrimitiveType()) || 
 								  ((al.get(i).getVariable() != null) && al.get(i).getVariable().getType() instanceof FuncType)){
 									throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncCall) n).getIdentifier().getName() + ": Only primitive types are allowed as arguments in function call");
 								} 
-								else if(!pl.get(i).getType().equals(al.get(i).getType())){
+								else if(!ft.getParType(i).equals(al.get(i).getType())){
 									//children have different types -> add cast node
-									if(pl.get(i).getType().isIntType()){
+									if(ft.getParType(i).isIntType()){
 										Real2Int r2i = new Real2Int(al.get(i).getFile(),al.get(i).getLine(),al.get(i));
 										al.addParam(r2i, i);
 									}else {
@@ -238,6 +250,7 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 				}
 			}
 		}
+		
 		epilog(n);
 		return null;
 	}
@@ -279,8 +292,8 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
 				FuncDecl fd = (FuncDecl) list.get(i);
 				//test if ReturnStmt has same type as defined in FuncDecl
 				// -> if not, add cast node
-				if(!ret.equals(fd.getType())){
-					if(fd.getType().equals(Type.getIntType())){
+				if(!ret.equals(((FuncType) fd.getType()).getRetType())){
+					if(((FuncType) fd.getType()).getRetType().equals(Type.getIntType())){
 						Real2Int r2i = new Real2Int(((ReturnStmt) n).getReturnValue().getFile(), ((ReturnStmt) n).getReturnValue().getLine(), ((ReturnStmt) n).getReturnValue());
 						((ReturnStmt) n).setReturnValue(r2i);
 					}else{

@@ -19,4 +19,8 @@ public class FuncType extends Type {
 	public Type getParType(int i){
 		return parTypes.get(i);
 	}
+	
+	public int getParSize() {
+		return parTypes.size();
+	}
 }

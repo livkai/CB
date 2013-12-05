@@ -75,7 +75,7 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 		//create a new block
 		st.enterBlock();
 		//add predefined functions
-		Variable v0 = new Variable("readInt", new FuncType(Type.getIntType(),new ArrayList<Type>()));
+		Variable v0 = new Variable("readInt",  new FuncType(Type.getIntType(),new ArrayList<Type>()));
 		v0.setDepth(0);
 		Variable v1 = new Variable("readChar", new FuncType(Type.getIntType(),new ArrayList<Type>()));
 		v1.setDepth(0);
