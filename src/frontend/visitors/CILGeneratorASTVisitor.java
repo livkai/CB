@@ -4,11 +4,7 @@ package frontend.visitors;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import cil.CSUB;
-import cil.IRFunction;
-import cil.IRProgram;
-import cil.RegisterOperand;
-import cil.VirtualRegister;
+import cil.*;
 import common.*;
 import frontend.ast.*;
 
@@ -28,8 +24,11 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	protected int errors;
 	/** name of the visitor */
 	protected  String name;
+	protected VirtualRegister leftTmp;
 	protected ArrayList<ASTNode> list;
 	protected ArrayList<IRFunction> irfuncs;
+	protected ArrayList<VirtualRegister> vrList;
+	protected ArrayList<VirtualRegister> arrayTmps;
 
 	/**
 	 * prolog. 
@@ -59,6 +58,8 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		this.name = name;
 		list = new ArrayList<ASTNode>();
 		irfuncs = new ArrayList<IRFunction>();
+		vrList = new ArrayList<VirtualRegister>();
+		arrayTmps = new ArrayList<VirtualRegister>();
 	}
 	
 	
@@ -101,6 +102,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	public R visit(final FuncDecl n, final P param) {
 		prolog(n);
 		IRFunction irf = new IRFunction(n.getName());
+		vrList = new ArrayList<VirtualRegister>();
 		ParList params = n.getParameterList();
 		for(int i = 0; i< params.size(); i++) {
 			irf.addParam(params.get(i).getIdentifier().getVariable());
@@ -143,9 +145,36 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	public R visit(final ArrayAccess n, final P param) {
 		prolog(n);
 		n.getIdentifier().accept(this, param);
+		ArrayList<Operand> opList = new ArrayList<Operand>();
 		for(Expr it : n.getIndices()) {
 			it.accept(this, param);
+			if(it instanceof Const) {
+				opList.add(new ConstOperand(((Const) it).getNumber(), it.getType()));
+			}else if(it instanceof Identifier) {
+				opList.add(new VariableOperand(it.getVariable()));
+			}else {
+				opList.add(new RegisterOperand(vrList.get(vrList.size()-1)));
+			}
 		}
+		for(int i = 0; i < opList.size()-1; i++) {
+			VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(Type.getIntType());
+			vrList.add(vr);
+			ConstOperand cons = new ConstOperand(((Const) n.getIdentifier().getType().getDim(i)).getNumber(), Type.getIntType());
+			CMUL mul = new CMUL(new RegisterOperand(vr), cons, opList.get(i));
+			irfuncs.get(irfuncs.size()-1).add(mul);
+			if(i!= 0) {
+				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(Type.getIntType());
+				vrList.add(vr2);
+				CADD add = new CADD(new RegisterOperand(vr2), new RegisterOperand(vr), new RegisterOperand(vrList.get(vrList.size()-2)));
+				irfuncs.get(irfuncs.size()-1).add(add);
+			}
+			
+		}
+		VirtualRegister vr3 = irfuncs.get(irfuncs.size()-1).getVirtReg(Type.getIntType());
+		vrList.add(vr3);
+		CADD addLast = new CADD(new RegisterOperand(vr3), new RegisterOperand(vrList.get(vrList.size()-2)), opList.get(opList.size()-1));
+		irfuncs.get(irfuncs.size()-1).add(addLast);
+		arrayTmps.add(vr3);
 		epilog(n);
 		return null;
 	}
@@ -162,11 +191,45 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		if(n.getArgList() != null) {
 			n.getArgList().accept(this, param);
 		}
-		
+		Operand op = null;
+		//if(list.get(list.size()-2) instanceof AssgnStmt) {
+			/*if(((AssgnStmt) list.get(list.size()-2)).getLValue() instanceof Identifier) {
+				op = new VariableOperand(((Identifier)((AssgnStmt)list.get(list.size()-2)).getLValue()).getVariable());
+			}*/
+		//}
+		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(n.getType());
+		vrList.add(vr);
+		op = new RegisterOperand(vr);
+		CCALL call = new CCALL(n.getIdentifier().getName(), op);
+		irfuncs.get(irfuncs.size()-1).add(call);
 		epilog(n);
 		return null;
 	}
-
+	
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final ArgList astnode, final P param) {
+		prolog(astnode);
+		for(Expr it : astnode.getParams()) {
+			it.accept(this, param);
+			Operand op = null;
+			if(it instanceof Identifier) {
+				op = new VariableOperand(it.getVariable());
+			}else if(it instanceof Const) {
+				op = new ConstOperand(((Const) it).getNumber(), it.getType());
+			}else {
+				op = new RegisterOperand(vrList.get(vrList.size()-1));
+			}
+			CPUSH push = new CPUSH(op);
+			irfuncs.get(irfuncs.size()-1).add(push);
+		}
+		epilog(astnode);
+		return null;
+	}
 
 
 	/**
@@ -193,7 +256,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			irp.addFunc(irfuncs.get(i));
 		}
 		epilog(astnode);
-		return null;
+		return (R) irp;
 	}
 
 	/**
@@ -236,6 +299,9 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	private void binexpr(final BinExpr n, final P param) {
 		n.getLeft().accept(this, param);
+		if(n.getLeft() instanceof BinExpr || n.getLeft() instanceof FuncCall){
+			leftTmp = vrList.get(vrList.size()-1);
+		}
 		n.getRight().accept(this, param);
 		
 		return;
@@ -257,6 +323,53 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	public R visit(final MULTerm astnode, final P param) {
 		prolog(astnode);
 		binexpr(astnode, param);
+		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+		vrList.add(vr);
+		Operand opLeft = null;
+		Operand opRight = null;
+		if(astnode.getLeft() instanceof Const) {
+			opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
+		}else if(astnode.getLeft() instanceof Identifier) {
+			opLeft = new VariableOperand(astnode.getLeft().getVariable());
+		}else if(astnode.getLeft() instanceof ArrayAccess) {
+			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+			//vrList.add(vr2);
+			opLeft = new RegisterOperand(vr2);
+			CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+			irfuncs.get(irfuncs.size()-1).add(load);
+		}else {
+			opLeft = new RegisterOperand(leftTmp);
+			/*if(astnode.getRight() instanceof BinExpr || astnode.getRight() instanceof FuncCall) {
+				opLeft = new RegisterOperand(vrList.get(vrList.size()-3));
+				//opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+			}else {
+				opLeft = new RegisterOperand(vrList.get(vrList.size()-2));
+			}*/
+		}
+		//if(opRight == null) {
+			if(astnode.getRight() instanceof Const) {
+				opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
+			}else if(astnode.getRight() instanceof Identifier) {
+				opRight = new VariableOperand(astnode.getRight().getVariable());
+			}else if(astnode.getRight() instanceof ArrayAccess) {
+				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+				//vrList.add(vr2);
+				opRight = new RegisterOperand(vr2);
+				CLOAD load;
+				if(astnode.getLeft() instanceof ArrayAccess){
+					load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(1)));
+				}else{
+					load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+				}
+				irfuncs.get(irfuncs.size()-1).add(load);
+			}else {
+					opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+			}
+				
+		//}
+		arrayTmps.clear();
+		CMUL cm = new CMUL(new RegisterOperand(vr), opLeft, opRight);
+		irfuncs.get(irfuncs.size()-1).add(cm);
 		epilog(astnode);
 		return null;
 	}
@@ -342,6 +455,53 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	public R visit(final DIVTerm astnode, final P param) {
 		prolog(astnode);
 		binexpr(astnode, param);
+		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+		vrList.add(vr);
+		Operand opLeft = null;
+		Operand opRight = null;
+		if(astnode.getLeft() instanceof Const) {
+			opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
+		}else if(astnode.getLeft() instanceof Identifier) {
+			opLeft = new VariableOperand(astnode.getLeft().getVariable());
+		}else if(astnode.getLeft() instanceof ArrayAccess) {
+			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+			//vrList.add(vr2);
+			opLeft = new RegisterOperand(vr2);
+			CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+			irfuncs.get(irfuncs.size()-1).add(load);
+		}else {
+			opLeft = new RegisterOperand(leftTmp);
+			/*if(astnode.getRight() instanceof BinExpr || astnode.getRight() instanceof FuncCall) {
+				opLeft = new RegisterOperand(vrList.get(vrList.size()-3));
+				//opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+			}else {
+				opLeft = new RegisterOperand(vrList.get(vrList.size()-2));
+			}*/
+		}
+		//if(opRight == null) {
+			if(astnode.getRight() instanceof Const) {
+				opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
+			}else if(astnode.getRight() instanceof Identifier) {
+				opRight = new VariableOperand(astnode.getRight().getVariable());
+			}else if(astnode.getRight() instanceof ArrayAccess) {
+				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+				//vrList.add(vr2);
+				opRight = new RegisterOperand(vr2);
+				CLOAD load;
+				if(astnode.getLeft() instanceof ArrayAccess){
+					load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(1)));
+				}else{
+					load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+				}
+				irfuncs.get(irfuncs.size()-1).add(load);
+			}else {
+					opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+			}
+				
+		//}
+		arrayTmps.clear();
+		CDIV cd = new CDIV(new RegisterOperand(vr), opLeft, opRight);
+		irfuncs.get(irfuncs.size()-1).add(cd);
 		epilog(astnode);
 		return null;
 	}
@@ -362,6 +522,53 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	public R visit(final ADDExpr astnode, final P param) {
 		prolog(astnode);
 		binexpr(astnode, param);
+		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+		vrList.add(vr);
+		Operand opLeft = null;
+		Operand opRight = null;
+		if(astnode.getLeft() instanceof Const) {
+			opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
+		}else if(astnode.getLeft() instanceof Identifier) {
+			opLeft = new VariableOperand(astnode.getLeft().getVariable());
+		}else if(astnode.getLeft() instanceof ArrayAccess) {
+			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+			//vrList.add(vr2);
+			opLeft = new RegisterOperand(vr2);
+			CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+			irfuncs.get(irfuncs.size()-1).add(load);
+		}else {
+			opLeft = new RegisterOperand(leftTmp);
+			/*if(astnode.getRight() instanceof BinExpr || astnode.getRight() instanceof FuncCall) {
+				opLeft = new RegisterOperand(vrList.get(vrList.size()-3));
+				//opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+			}else {
+				opLeft = new RegisterOperand(vrList.get(vrList.size()-2));
+			}*/
+		}
+		//if(opRight == null) {
+			if(astnode.getRight() instanceof Const) {
+				opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
+			}else if(astnode.getRight() instanceof Identifier) {
+				opRight = new VariableOperand(astnode.getRight().getVariable());
+			}else if(astnode.getRight() instanceof ArrayAccess) {
+				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+				//vrList.add(vr2);
+				opRight = new RegisterOperand(vr2);
+				CLOAD load;
+				if(astnode.getLeft() instanceof ArrayAccess){
+					load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(1)));
+				}else{
+					load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+				}
+				irfuncs.get(irfuncs.size()-1).add(load);
+			}else {
+					opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+			}
+				
+		//}
+		arrayTmps.clear();
+		CADD ca = new CADD(new RegisterOperand(vr), opLeft, opRight);
+		irfuncs.get(irfuncs.size()-1).add(ca);
 		epilog(astnode);
 		return null;
 	}
@@ -387,12 +594,57 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	public R visit(final SUBExpr astnode, final P param) {
 		prolog(astnode);
-		if(list.get(list.size()-2) instanceof BinExpr){
-			VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-			if(astnode.getLeft() )
-			CSUB cs = new CSUB(new RegisterOperand(vr),);
-		}
 		binexpr(astnode, param);
+	//	if(list.get(list.size()-2) instanceof BinExpr){
+			VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+			vrList.add(vr);
+			Operand opLeft = null;
+			Operand opRight = null;
+			if(astnode.getLeft() instanceof Const) {
+				opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
+			}else if(astnode.getLeft() instanceof Identifier) {
+				opLeft = new VariableOperand(astnode.getLeft().getVariable());
+			}else if(astnode.getLeft() instanceof ArrayAccess) {
+				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+				//vrList.add(vr2);
+				opLeft = new RegisterOperand(vr2);
+				CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+				irfuncs.get(irfuncs.size()-1).add(load);
+			}else {
+				opLeft = new RegisterOperand(leftTmp);
+				/*if(astnode.getRight() instanceof BinExpr || astnode.getRight() instanceof FuncCall) {
+					opLeft = new RegisterOperand(vrList.get(vrList.size()-3));
+					//opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+				}else {
+					opLeft = new RegisterOperand(vrList.get(vrList.size()-2));
+				}*/
+			}
+			//if(opRight == null) {
+				if(astnode.getRight() instanceof Const) {
+					opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
+				}else if(astnode.getRight() instanceof Identifier) {
+					opRight = new VariableOperand(astnode.getRight().getVariable());
+				}else if(astnode.getRight() instanceof ArrayAccess) {
+					VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+					//vrList.add(vr2);
+					opRight = new RegisterOperand(vr2);
+					CLOAD load;
+					if(astnode.getLeft() instanceof ArrayAccess){
+						load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(1)));
+					}else{
+						load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+					}
+					irfuncs.get(irfuncs.size()-1).add(load);
+				}else {
+						opRight = new RegisterOperand(vrList.get(vrList.size()-2));
+				}
+					
+			//}
+			arrayTmps.clear();
+			CSUB cs = new CSUB(new RegisterOperand(vr), opLeft, opRight);
+			irfuncs.get(irfuncs.size()-1).add(cs);
+			
+		//}
 		epilog(astnode);
 		return null;
 	}

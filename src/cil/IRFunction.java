@@ -67,6 +67,10 @@ public final class IRFunction {
 	    virtregs.add(vr);
 	    return vr;
     }
+    
+    public VirtualRegister getVirtReg(int i) {
+    	return virtregs.get(i);
+    }
 
     public CLABEL getLabel() {
 	return new CLABEL(nextlabelid++);
@@ -114,9 +118,7 @@ public final class IRFunction {
     	locals.add(var);
     }
     
-    public void addVirtReg(VirtualRegister vr) {
-    	virtregs.add(vr);
-    }
+    
 
     /**
      * Returns the name of the class

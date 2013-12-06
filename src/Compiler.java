@@ -5,6 +5,9 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import cil.IRProgram;
+import cil.visitors.DumpCILVisitor;
+
 import com.martiansoftware.jsap.AbstractParameter;
 import com.martiansoftware.jsap.FlaggedOption;
 import com.martiansoftware.jsap.JSAP;
@@ -19,6 +22,7 @@ import frontend.ast.Program;
 import frontend.lexer.Lexer;
 import frontend.parser.Parser;
 import frontend.visitors.ASTVisitor;
+import frontend.visitors.CILGeneratorASTVisitor;
 import frontend.visitors.DumpASTVisitor;
 import frontend.visitors.ReduceASTVisitor;
 import frontend.visitors.SymbolTableASTVisitor;
@@ -263,6 +267,7 @@ public final class Compiler {
 			System.exit(1);
 		}
 		
+		IRProgram newRoot = null;
 		Program root = (Program) parser.getRoot();
 		if (root == null) {
 			System.err.println(inputFile + ": error: could not parse file");
@@ -277,6 +282,8 @@ public final class Compiler {
 		astvisitors.add(stVisitor);
 		TypeCheckASTVisitor typeVisitor = new TypeCheckASTVisitor(inputFile);
 		astvisitors.add(typeVisitor);
+		CILGeneratorASTVisitor<String,IRProgram> cilvisitor = new CILGeneratorASTVisitor<String,IRProgram>(inputFile);
+		astvisitors.add(cilvisitor);
 		/*
 		 * TODO for exercise 2 and later: Add visitors to traverse the AST here.
 		 */
@@ -295,7 +302,7 @@ public final class Compiler {
 		 */
 		int index = 0;
 		for(ASTVisitor<?,?> av : astvisitors) {
-			av.visit(root, null);
+			newRoot = (IRProgram)av.visit(root, null);
 			if (av.getErrors() != 0) {
 				System.exit(1); // errors occured
 			}
@@ -312,6 +319,8 @@ public final class Compiler {
 		}
 
 		if (dumpCIL) {
+			DumpCILVisitor visitor = new DumpCILVisitor(inputFile + "CIL");
+			visitor.visit(newRoot);
 			/* TODO for execerice 4: Dump CIL code before the other CIL visitors are run */
 		}
 
