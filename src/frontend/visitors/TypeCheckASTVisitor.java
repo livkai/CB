@@ -2,6 +2,8 @@ package frontend.visitors;
 
 
 import java.util.ArrayList;
+import java.util.Iterator;
+
 import common.*;
 import frontend.ast.*;
 
@@ -125,11 +127,11 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
                                 throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((VarDecl) pl.get(i)).getIdentifier().getName() + ": Only primitive types are allowed as parameters in declaration of function");
                         }
                 }
-                //return type of function must be a primitive type
-                
+                //return type of function must be a primitive type               
                 if(((FuncDecl) n).getType().isArrayType()){
                         throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": Only primitive types are allowed as return type of a function!");
                 }
+                //check if main-function is declared correctly  
                 if(n.getName().compareTo("main")== 0){
                         if(!n.getType().isIntType()){
                                 throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": The main function must have INT as return type!");        
@@ -137,6 +139,47 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
                         if(pl.size() != 0){
                                 throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ ((FuncDecl) n).getIdentifier().getName() + ": The main function has no parameter!");                                
                         }
+                }
+                //check if exists a ReturnStmt
+                boolean existRet = false;
+                Iterator<Stmt> it = n.getBody().getStmtList().getStatements().iterator();
+                while(it.hasNext()) {
+                	Stmt next = it.next();
+                	if(next instanceof ReturnStmt) {
+                    	existRet = true;
+                    	break;
+                    }
+                	if(next instanceof WhileStmt) {
+                		Iterator<Stmt> wIt = ((WhileStmt)next).getWhileBlock().getStmtList().getStatements().iterator();
+                		while(wIt.hasNext()) {
+                        	Stmt next2 = wIt.next();
+                        	if(next2 instanceof ReturnStmt) {
+                            	existRet = true;
+                            	break;
+                            }
+                		}
+                	}
+                	if(next instanceof IfStmt) {
+                		Iterator<Stmt> iIt = ((IfStmt)next).getThenBlock().getStmtList().getStatements().iterator();
+                		while(iIt.hasNext()) {
+                        	Stmt next3 = iIt.next();
+                        	if(next3 instanceof ReturnStmt) {
+                            	existRet = true;
+                            	break;
+                            }
+                		}
+                		Iterator<Stmt> eIt = ((IfStmt)next).getElseBlock().getStmtList().getStatements().iterator();
+                		while(eIt.hasNext()) {
+                        	Stmt next4 = eIt.next();
+                        	if(next4 instanceof ReturnStmt) {
+                            	existRet = true;
+                            	break;
+                            }
+                		}
+                	}
+                }
+                if(!existRet) {
+                	throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Function needs a Returntype!");
                 }
                 
                 n.getParameterList().accept(this, param);

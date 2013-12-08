@@ -302,7 +302,8 @@ public final class Compiler {
 		 */
 		int index = 0;
 		for(ASTVisitor<?,?> av : astvisitors) {
-			newRoot = (IRProgram)av.visit(root, null);
+			//newRoot = (IRProgram)av.visit(root, null);
+			av.visit(root, null);
 			if (av.getErrors() != 0) {
 				System.exit(1); // errors occured
 			}
@@ -320,6 +321,7 @@ public final class Compiler {
 
 		if (dumpCIL) {
 			DumpCILVisitor visitor = new DumpCILVisitor(inputFile + "CIL");
+			newRoot = CILGeneratorASTVisitor.getIRProgram();
 			visitor.visit(newRoot);
 			/* TODO for execerice 4: Dump CIL code before the other CIL visitors are run */
 		}

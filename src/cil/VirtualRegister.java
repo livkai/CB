@@ -18,4 +18,5 @@ public final class VirtualRegister extends Register {
     public VirtualRegister(final String name, final Type type) {
         super(name, type);
     }
+    
 }
