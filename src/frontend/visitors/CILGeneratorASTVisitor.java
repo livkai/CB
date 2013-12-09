@@ -103,24 +103,17 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	    }else{
 	    	opRight = new RegisterOperand(vrList.get(vrList.size()-1));
 	    }
-		//check which Operand we need for the left side of the assignment
-		if(n.getLValue() instanceof Identifier) {
+		//check left side
+		if(!(n.getLValue() instanceof ArrayAccess)) {
 			opLeft = new VariableOperand(n.getLValue().getVariable());
-		//ArrayAccess	
+			//create and add new CASSGN-icode
+		    CASSGN assgn = new CASSGN(opLeft, opRight);
+		    irfuncs.get(irfuncs.size()-1).add(assgn);
+		 //ArrayAccess
 		}else {
-			VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(n.getLValue().getType());
-            opLeft = new RegisterOperand(vr);
-            CLOAD load = new CLOAD(opLeft,new VariableOperand(((ArrayAccess)n.getLValue()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
-            irfuncs.get(irfuncs.size()-1).add(load);
-		}
-		//create and add new CASSGN-icode
-	    CASSGN assgn = new CASSGN(opLeft, opRight);
-	    irfuncs.get(irfuncs.size()-1).add(assgn);
-	    //if left side was ArrayAccess: store right Operand in the array
-	    if(n.getLValue() instanceof ArrayAccess) {
-	    	CSTORE store = new CSTORE(opRight, new VariableOperand(((ArrayAccess)n.getLValue()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)));
+			CSTORE store = new CSTORE(new VariableOperand(((ArrayAccess)n.getLValue()).getIdentifier().getVariable()), new RegisterOperand(arrayTmps.get(0)),opRight);
 	    	irfuncs.get(irfuncs.size()-1).add(store);
-	    }
+		}
 	    arrayTmps.clear();
 		epilog(n);
 		return null;
