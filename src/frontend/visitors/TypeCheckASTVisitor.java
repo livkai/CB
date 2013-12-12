@@ -141,7 +141,7 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
                         }
                 }
                 //check if exists a ReturnStmt
-                boolean existRet = false;
+            /*    boolean existRet = false;
                 Iterator<Stmt> it = n.getBody().getStmtList().getStatements().iterator();
                 while(it.hasNext()) {
                 	Stmt next = it.next();
@@ -168,20 +168,22 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
                             	break;
                             }
                 		}
-                		Iterator<Stmt> eIt = ((IfStmt)next).getElseBlock().getStmtList().getStatements().iterator();
-                		while(eIt.hasNext()) {
-                        	Stmt next4 = eIt.next();
-                        	if(next4 instanceof ReturnStmt) {
-                            	existRet = true;
-                            	break;
-                            }
+                		if(((IfStmt)next).getElseBlock() != null) {
+                			Iterator<Stmt> eIt = ((IfStmt)next).getElseBlock().getStmtList().getStatements().iterator();
+                    		while(eIt.hasNext()) {
+                            	Stmt next4 = eIt.next();
+                            	if(next4 instanceof ReturnStmt) {
+                                	existRet = true;
+                                	break;
+                                }
+                    		}
                 		}
                 	}
                 }
                 if(!existRet) {
                 	throw new InternalCompilerErrorRuntimeException(n.getFile() + ": "+ n.getLine() + ": "+ "Function needs a Returntype!");
                 }
-                
+                */
                 n.getParameterList().accept(this, param);
                 n.getBody().accept(this, param);
                 decl(n, param);
