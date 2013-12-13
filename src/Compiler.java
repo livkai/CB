@@ -320,7 +320,7 @@ public final class Compiler {
 		}
 
 		if (dumpCIL) {
-			DumpCILVisitor visitor = new DumpCILVisitor(inputFile + "CIL");
+			DumpCILVisitor visitor = new DumpCILVisitor(inputFile.replace(".e","") + ".cil");
 			newRoot = CILGeneratorASTVisitor.getIRProgram();
 			visitor.visit(newRoot);
 			/* TODO for execerice 4: Dump CIL code before the other CIL visitors are run */
