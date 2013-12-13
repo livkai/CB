@@ -13,7 +13,7 @@ public final class CASSGN extends CUnary {
      * @param operand
      *            Operand that will be assigned to the target operand
      * @param target
-     *            Operand to which the opernad will be assigned
+     *            Operand to which the operand will be assigned
      */
     public CASSGN(final Operand target, final Operand operand) {
         super(target, operand);
