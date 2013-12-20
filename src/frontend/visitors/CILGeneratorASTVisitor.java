@@ -31,11 +31,14 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	protected ArrayList<IRFunction> irfuncs;
 	//list which contains all VirtualRegister of a IRFunction
 	protected ArrayList<VirtualRegister> vrList;
-	//help structures
-	protected VirtualRegister leftTmp;
-	protected VirtualRegister rightTmp;
+	
 	public static IRProgram irp;
-
+	
+	protected ArrayList<CLABEL> trueLabels;
+	protected ArrayList<CLABEL> falseLabels;
+	protected boolean trueFlag;
+	protected boolean falseFlag;
+	
 	/**
 	 * prolog. 
 	 * @see frontend.visitors.ASTVisitor#prolog ASTVisitor.prolog
@@ -65,9 +68,9 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		list = new ArrayList<ASTNode>();
 		irfuncs = new ArrayList<IRFunction>();
 		vrList = new ArrayList<VirtualRegister>();
-		leftTmp = null;
-		rightTmp = null;
 		irp = null;
+		trueLabels = new ArrayList<CLABEL>();
+		falseLabels = new ArrayList<CLABEL>();
 	}
 	
 	public static IRProgram getIRProgram() {
@@ -444,16 +447,26 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 *            The expression
 	 */
 	private void binexpr(final BinExpr n, final P param) {
-		//uninteresting for exercise 4..
-		n.getLeft().accept(this, param);
-		//save value of VirtualRegister of the left child before creating VirtualRegisters for right child
-		if(n.getLeft() instanceof ADDExpr || n.getLeft() instanceof SUBExpr || n.getLeft() instanceof MULTerm || n.getLeft() instanceof DIVTerm || n.getLeft() instanceof FuncCall || n.getLeft() instanceof Int2Real || n.getLeft() instanceof Real2Int || n.getLeft() instanceof ArrayAccess){
-			leftTmp = vrList.get(vrList.size()-1);
+		if(n instanceof ORExpr) {
+			if(!trueFlag && !falseFlag || (!(!trueFlag && !falseFlag))){
+				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+				trueLabels.add(label);
+			}
+			n.getLeft().accept(this, param);
+			irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
+			falseLabels.remove(falseLabels.size()-1);
+			n.getRight().accept(this, param);
 		}
-		n.getRight().accept(this, param);
-		//save value of VirtualRegister of the right child 
-		if(n.getRight() instanceof ADDExpr || n.getRight() instanceof SUBExpr || n.getRight() instanceof MULTerm || n.getRight() instanceof DIVTerm || n.getRight() instanceof FuncCall || n.getRight() instanceof Int2Real || n.getRight() instanceof Real2Int || n.getRight() instanceof ArrayAccess){
-			rightTmp = vrList.get(vrList.size()-1);
+		if(n instanceof ANDExpr) {
+			System.out.println(falseFlag);
+			if(!falseFlag && !trueFlag || (!(!trueFlag && !falseFlag))){
+				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+				falseLabels.add(label);
+			}
+			n.getLeft().accept(this, param);
+			irfuncs.get(irfuncs.size()-1).add(trueLabels.get(trueLabels.size()-1));
+			trueLabels.remove(trueLabels.size()-1);
+			n.getRight().accept(this, param);
 		}
 		return;
 	}
@@ -498,10 +511,79 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		VirtualRegister[] tmp = new VirtualRegister[2];
 		binexpr(astnode, param,tmp);
 		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-		
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);	
+		vrList.add(vr);
+		//create new icode for the arithmetic expression
+		CMUL cm = new CMUL(new RegisterOperand(vr), ops[0], ops[1]);
+		irfuncs.get(irfuncs.size()-1).add(cm);
+		epilog(astnode);
+		return null;
+	}
+
+
+	
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final DIVTerm astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);		
+		vrList.add(vr);
+		CDIV cd = new CDIV(new RegisterOperand(vr), ops[0], ops[1]);
+		irfuncs.get(irfuncs.size()-1).add(cd);
+		epilog(astnode);
+		return null;
+	}
+
+	
+	
+	public R visit(final ADDExpr astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);	
+		vrList.add(vr);
+		CADD ca = new CADD(new RegisterOperand(vr), ops[0], ops[1]);
+		irfuncs.get(irfuncs.size()-1).add(ca);
+		epilog(astnode);
+		return null;
+	}
+
+
+	
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final SUBExpr astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);	
+		vrList.add(vr);
+		CSUB cs = new CSUB(new RegisterOperand(vr), ops[0], ops[1]);
+		irfuncs.get(irfuncs.size()-1).add(cs);
+		epilog(astnode);
+		return null;
+	}
+	
+	public void getOps(BinExpr astnode, VirtualRegister[] tmp, Operand[] ops) {
 		Operand opLeft = null;
 		Operand opRight = null;
-		//check which operand we need for the left side
 		if(astnode.getLeft() instanceof Const) {
 			opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
 		}else if(astnode.getLeft() instanceof Identifier) {
@@ -510,13 +592,11 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
 			vrList.add(vr2);
 			opLeft = new RegisterOperand(vr2);
-			//create a CLOAD-icode; gets the offset, calculated in the visit-method of ArrayAcess, from the help structure
 			CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(tmp[0]));
 			irfuncs.get(irfuncs.size()-1).add(load);
 		}else {
 			opLeft = new RegisterOperand(tmp[0]);
 		}
-		//check which operand we need for the right side
 			if(astnode.getRight() instanceof Const) {
 				opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
 			}else if(astnode.getRight() instanceof Identifier) {
@@ -525,34 +605,86 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
 				vrList.add(vr2);
 				opRight = new RegisterOperand(vr2);
-				//create new CLOAD-icode, check if left side also has been an ArrayAccess
 				CLOAD load;
 				load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(tmp[1]));
 				irfuncs.get(irfuncs.size()-1).add(load);
 			}else {
 					opRight = new RegisterOperand(tmp[1]);
+					
 			}
-			vrList.add(vr);
-		//create new icode for the arithmetic expression
-		CMUL cm = new CMUL(new RegisterOperand(vr), opLeft, opRight);
-		irfuncs.get(irfuncs.size()-1).add(cm);
-		epilog(astnode);
-		return null;
+			ops[0] = opLeft;
+			ops[1] = opRight;
+				
 	}
-
 	/**
 	 * Visit this ASTNode (visitor pattern)
 	 * 
 	 * @param astnode
 	 *            ASTNode to visit
 	 */
-	public R visit(final NEQExpr astnode, final P param) {
+	public R visit(final IfStmt astnode, final P param) {
 		prolog(astnode);
-		binexpr(astnode, param);
+		astnode.getCondition().accept(this, param);
+		irfuncs.get(irfuncs.size()-1).add(trueLabels.get(trueLabels.size()-1));
+		astnode.getThenBlock().accept(this, param);
+		Block elseblock = astnode.getElseBlock();
+		if (elseblock != null) {
+			CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+			CBRA br = new CBRA(label);
+			irfuncs.get(irfuncs.size()-1).add(br);
+			irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
+			elseblock.accept(this, param);
+			irfuncs.get(irfuncs.size()-1).add(label);
+		}else{
+			irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
+		}
+		falseLabels.remove(falseLabels.size()-1);
+		trueLabels.remove(trueLabels.size()-1);
+		falseFlag = false;
+		trueFlag = false;
+		epilog(astnode);
+		return null;
+	}
+	
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final WhileStmt astnode, final P param) {
+		prolog(astnode);
+		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+		irfuncs.get(irfuncs.size()-1).add(label);
+		astnode.getCondition().accept(this, param);
+		irfuncs.get(irfuncs.size()-1).add(trueLabels.get(trueLabels.size()-1));
+		astnode.getWhileBlock().accept(this, param);
+		CBRA br = new CBRA(label);
+		irfuncs.get(irfuncs.size()-1).add(br);
+		irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
+		falseLabels.remove(falseLabels.size()-1);
+		trueLabels.remove(trueLabels.size()-1);
+		falseFlag = false;
+		trueFlag = false;
 		epilog(astnode);
 		return null;
 	}
 
+	
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final ANDExpr astnode, final P param) {
+		prolog(astnode);
+		binexpr(astnode, param);
+
+		epilog(astnode);
+		return null;
+	}
+	
 	/**
 	 * Visit this ASTNode (visitor pattern)
 	 * 
@@ -574,7 +706,18 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	public R visit(final LEQExpr astnode, final P param) {
 		prolog(astnode);
-		binexpr(astnode, param);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+		trueLabels.add(label);
+		falseLabels.add(label2);
+		CBLE lesseq = new CBLE(ops[0], ops[1], label);
+		CBRA br = new CBRA(label2);
+		irfuncs.get(irfuncs.size()-1).add(lesseq);
+		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
 		return null;
 	}
@@ -587,14 +730,36 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	public R visit(final LTExpr astnode, final P param) {
 		prolog(astnode);
-		binexpr(astnode, param);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+		trueLabels.add(label);
+		falseLabels.add(label2);
+		CBLT less = new CBLT(ops[0], ops[1], label);
+		CBRA br = new CBRA(label2);
+		irfuncs.get(irfuncs.size()-1).add(less);
+		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
 		return null;
 	}
 	
 	public R visit(final GEQExpr astnode, final P param) {
 		prolog(astnode);
-		binexpr(astnode, param);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+		trueLabels.add(label);
+		falseLabels.add(label2);
+		CBGE greatereq = new CBGE(ops[0], ops[1], label);
+		CBRA br = new CBRA(label2);
+		irfuncs.get(irfuncs.size()-1).add(greatereq);
+		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
 		return null;
 	}
@@ -607,61 +772,22 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	public R visit(final GTExpr astnode, final P param) {
 		prolog(astnode);
-		binexpr(astnode, param);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+		trueLabels.add(label);
+		falseLabels.add(label2);
+		CBGT greater = new CBGT(ops[0], ops[1], label);
+		CBRA br = new CBRA(label2);
+		irfuncs.get(irfuncs.size()-1).add(greater);
+		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
 		return null;
 	}
 	
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final DIVTerm astnode, final P param) {
-		prolog(astnode);
-		VirtualRegister[] tmp = new VirtualRegister[2];
-		binexpr(astnode, param,tmp);
-		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-		
-		Operand opLeft = null;
-		Operand opRight = null;
-		if(astnode.getLeft() instanceof Const) {
-			opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
-		}else if(astnode.getLeft() instanceof Identifier) {
-			opLeft = new VariableOperand(astnode.getLeft().getVariable());
-		}else if(astnode.getLeft() instanceof ArrayAccess) {
-			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-			vrList.add(vr2);
-			opLeft = new RegisterOperand(vr2);
-			CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(tmp[0]));
-			irfuncs.get(irfuncs.size()-1).add(load);
-		}else {
-			opLeft = new RegisterOperand(tmp[0]);
-
-		}
-			if(astnode.getRight() instanceof Const) {
-				opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
-			}else if(astnode.getRight() instanceof Identifier) {
-				opRight = new VariableOperand(astnode.getRight().getVariable());
-			}else if(astnode.getRight() instanceof ArrayAccess) {
-				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-				vrList.add(vr2);
-				opRight = new RegisterOperand(vr2);
-				CLOAD load;
-				load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(tmp[1]));
-				irfuncs.get(irfuncs.size()-1).add(load);
-			}else {
-					opRight = new RegisterOperand(tmp[1]);
-			}
-				
-			vrList.add(vr);
-		CDIV cd = new CDIV(new RegisterOperand(vr), opLeft, opRight);
-		irfuncs.get(irfuncs.size()-1).add(cd);
-		epilog(astnode);
-		return null;
-	}
-
 	/**
 	 * Visit this ASTNode (visitor pattern)
 	 * 
@@ -670,63 +796,37 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	public R visit(final EQExpr astnode, final P param) {
 		prolog(astnode);
-		binexpr(astnode, param);
-		epilog(astnode);
-		return null;
-	}
-	
-	public R visit(final ADDExpr astnode, final P param) {
-		prolog(astnode);
 		VirtualRegister[] tmp = new VirtualRegister[2];
 		binexpr(astnode, param,tmp);
-		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-		
-		Operand opLeft = null;
-		Operand opRight = null;
-		if(astnode.getLeft() instanceof Const) {
-			opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
-		}else if(astnode.getLeft() instanceof Identifier) {
-			opLeft = new VariableOperand(astnode.getLeft().getVariable());
-		}else if(astnode.getLeft() instanceof ArrayAccess) {
-			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-			vrList.add(vr2);
-			opLeft = new RegisterOperand(vr2);
-			CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(tmp[0]));
-			irfuncs.get(irfuncs.size()-1).add(load);
-		}else {
-			opLeft = new RegisterOperand(tmp[0]);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);	
+		CLABEL label; 
+		if(list.get(list.size()-2) instanceof ORExpr){
+			label = trueLabels.get(trueLabels.size()-1);
+		}else{
+			if(((ANDExpr)list.get(list.size()-2)).getRight().equals(astnode)){
+				trueFlag = true;
+			}
+			label = irfuncs.get(irfuncs.size()-1).getLabel();
+			trueLabels.add(label);
 		}
-			if(astnode.getRight() instanceof Const) {
-				opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
-			}else if(astnode.getRight() instanceof Identifier) {
-				opRight = new VariableOperand(astnode.getRight().getVariable());
-			}else if(astnode.getRight() instanceof ArrayAccess) {
-				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-				vrList.add(vr2);
-				opRight = new RegisterOperand(vr2);
-				CLOAD load;
-				load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(tmp[1]));
-				irfuncs.get(irfuncs.size()-1).add(load);
-			}else {
-					opRight = new RegisterOperand(tmp[1]);
+		CLABEL label2; 
+		if(list.get(list.size()-2) instanceof ANDExpr){
+			label2 = falseLabels.get(falseLabels.size()-1);
+		}else{
+			if(((ORExpr)list.get(list.size()-2)).getRight().equals(astnode)){
+				falseFlag = true;
+				System.out.println("falseFlag true");
 			}
-				
-			vrList.add(vr);
-		CADD ca = new CADD(new RegisterOperand(vr), opLeft, opRight);
-		irfuncs.get(irfuncs.size()-1).add(ca);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final ANDExpr astnode, final P param) {
-		prolog(astnode);
-		binexpr(astnode, param);
+			label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+			falseLabels.add(label2);
+		}
+	//	trueLabels.add(label);
+		//falseLabels.add(label2);
+		CBEQ eq = new CBEQ(ops[0], ops[1], label);
+		CBRA br = new CBRA(label2);
+		irfuncs.get(irfuncs.size()-1).add(eq);
+		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
 		return null;
 	}
@@ -737,47 +837,22 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 * @param astnode
 	 *            ASTNode to visit
 	 */
-	public R visit(final SUBExpr astnode, final P param) {
+	public R visit(final NEQExpr astnode, final P param) {
 		prolog(astnode);
 		VirtualRegister[] tmp = new VirtualRegister[2];
 		binexpr(astnode, param,tmp);
-			VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-		
-			Operand opLeft = null;
-			Operand opRight = null;
-			if(astnode.getLeft() instanceof Const) {
-				opLeft = new ConstOperand(((Const) astnode.getLeft()).getNumber(), astnode.getLeft().getType());
-			}else if(astnode.getLeft() instanceof Identifier) {
-				opLeft = new VariableOperand(astnode.getLeft().getVariable());
-			}else if(astnode.getLeft() instanceof ArrayAccess) {
-				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-				vrList.add(vr2);
-				opLeft = new RegisterOperand(vr2);
-				CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(tmp[0]));
-				irfuncs.get(irfuncs.size()-1).add(load);
-			}else {
-				opLeft = new RegisterOperand(tmp[0]);
-			}
-				if(astnode.getRight() instanceof Const) {
-					opRight = new ConstOperand(((Const) astnode.getRight()).getNumber(), astnode.getRight().getType());
-				}else if(astnode.getRight() instanceof Identifier) {
-					opRight = new VariableOperand(astnode.getRight().getVariable());
-				}else if(astnode.getRight() instanceof ArrayAccess) {
-					VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
-					vrList.add(vr2);
-					opRight = new RegisterOperand(vr2);
-					CLOAD load;
-					load = new CLOAD(opRight, new VariableOperand(((ArrayAccess) astnode.getRight()).getIdentifier().getVariable()), new RegisterOperand(tmp[1]));
-					irfuncs.get(irfuncs.size()-1).add(load);
-				}else {
-						opRight = new RegisterOperand(tmp[1]);
-						
-				}
-					
-				vrList.add(vr);
-			CSUB cs = new CSUB(new RegisterOperand(vr), opLeft, opRight);
-			irfuncs.get(irfuncs.size()-1).add(cs);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);	
+		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+		trueLabels.add(label);
+		falseLabels.add(label2);
+		CBNE neq = new CBNE(ops[0], ops[1], label);
+		CBRA br = new CBRA(label2);
+		irfuncs.get(irfuncs.size()-1).add(neq);
+		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
 		return null;
 	}
+	
 }
