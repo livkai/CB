@@ -447,30 +447,11 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 *            The expression
 	 */
 	private void binexpr(final BinExpr n, final P param) {
+		System.out.println("FalseFlag: "+falseFlag);
+		System.out.println("TrueFlag: "+trueFlag);
 		if(n instanceof ORExpr) {
+			System.out.println("ORExpr:");
 			//check whether an ORExpr is an ancestor of the current node
-			boolean or = false;
-			for(ASTNode ast : list){
-				if(ast instanceof ORExpr && !ast.equals(n)){
-					or = true;
-					break;
-				}
-			}
-			if(!trueFlag || or/*&& !falseFlag || (!(!trueFlag && !falseFlag))*/){
-				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
-				trueLabels.add(label);
-			}
-			if(n.getLeft() instanceof ANDExpr || n.getLeft() instanceof ORExpr || n.getRight() instanceof ANDExpr || n.getRight() instanceof ORExpr){
-				trueFlag = true;
-			}
-			n.getLeft().accept(this, param);
-			irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
-			falseLabels.remove(falseLabels.size()-1);
-			n.getRight().accept(this, param);
-		}
-		if(n instanceof ANDExpr) {
-			System.out.println(falseFlag);
-			//check whether an ANDExpr is an ancestor of the current node
 			boolean and = false;
 			for(ASTNode ast : list){
 				if(ast instanceof ANDExpr && !ast.equals(n)){
@@ -478,9 +459,34 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 					break;
 				}
 			}
-			if(!falseFlag || and/*&& !trueFlag || (!(!trueFlag && !falseFlag))*/){
+			if(!trueFlag || (and && !(list.get(list.size()-2) instanceof ORExpr))/*&& !falseFlag || (!(!trueFlag && !falseFlag))*/){
+				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+				trueLabels.add(label);
+				System.out.println("trueLabel added! Truesize: " + trueLabels.size());
+			}
+			if(n.getLeft() instanceof ANDExpr || n.getLeft() instanceof ORExpr || n.getRight() instanceof ANDExpr || n.getRight() instanceof ORExpr){
+				trueFlag = true;
+			}
+			n.getLeft().accept(this, param);
+			irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
+			falseLabels.remove(falseLabels.size()-1);
+			System.out.println("falseLabel removed! Falsesize: " + falseLabels.size());
+			n.getRight().accept(this, param);
+		}
+		if(n instanceof ANDExpr) {
+			System.out.println("ANDExpr");
+			//check whether an ANDExpr is an ancestor of the current node
+			boolean or = false;
+			for(ASTNode ast : list){
+				if(ast instanceof ORExpr && !ast.equals(n)){
+					or = true;
+					break;
+				}
+			}
+			if(!falseFlag || (or && !(list.get(list.size()-2)instanceof ANDExpr))/*&& !trueFlag || (!(!trueFlag && !falseFlag))*/){
 				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
 				falseLabels.add(label);
+				System.out.println("falseLabel added! Falsesize: " + falseLabels.size());
 			}
 			if(n.getLeft() instanceof ANDExpr || n.getLeft() instanceof ORExpr || n.getRight() instanceof ANDExpr || n.getRight() instanceof ORExpr){
 				falseFlag = true;
@@ -488,6 +494,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			n.getLeft().accept(this, param);
 			irfuncs.get(irfuncs.size()-1).add(trueLabels.get(trueLabels.size()-1));
 			trueLabels.remove(trueLabels.size()-1);
+			System.out.println("trueLabel removed! Truesize: " + trueLabels.size());
 			n.getRight().accept(this, param);
 		}
 		return;
@@ -611,7 +618,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		}else if(astnode.getLeft() instanceof Identifier) {
 			opLeft = new VariableOperand(astnode.getLeft().getVariable());
 		}else if(astnode.getLeft() instanceof ArrayAccess) {
-			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+			VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getLeft().getType());
 			vrList.add(vr2);
 			opLeft = new RegisterOperand(vr2);
 			CLOAD load = new CLOAD(opLeft, new VariableOperand(((ArrayAccess) astnode.getLeft()).getIdentifier().getVariable()), new RegisterOperand(tmp[0]));
@@ -624,7 +631,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			}else if(astnode.getRight() instanceof Identifier) {
 				opRight = new VariableOperand(astnode.getRight().getVariable());
 			}else if(astnode.getRight() instanceof ArrayAccess) {
-				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getType());
+				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(astnode.getRight().getType());
 				vrList.add(vr2);
 				opRight = new RegisterOperand(vr2);
 				CLOAD load;
@@ -826,8 +833,10 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		if(list.get(list.size()-2) instanceof ORExpr){
 			label = trueLabels.get(trueLabels.size()-1);
 		}else{
-			if(((ANDExpr)list.get(list.size()-2)).getRight().equals(astnode)){
-				trueFlag = true;
+			if(!(list.get(list.size()-2) instanceof IfStmt) && !(list.get(list.size()-2) instanceof WhileStmt)){
+				if(((ANDExpr)list.get(list.size()-2)).getRight().equals(astnode)){
+					trueFlag = true;
+				}
 			}
 			//check whether an ORExpr is an ancestor of the current node
 			boolean or = false;
@@ -849,9 +858,11 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		if(list.get(list.size()-2) instanceof ANDExpr){
 			label2 = falseLabels.get(falseLabels.size()-1);
 		}else{
-			if(((ORExpr)list.get(list.size()-2)).getRight().equals(astnode)){
-				falseFlag = true;
-				System.out.println("falseFlag true");
+			if(!(list.get(list.size()-2) instanceof IfStmt) && !(list.get(list.size()-2) instanceof WhileStmt)){
+				if(((ORExpr)list.get(list.size()-2)).getRight().equals(astnode)){
+					falseFlag = true;
+					System.out.println("falseFlag true");
+				}
 			}
 			//check whether an ANDExpr is an ancestor of the current node
 			boolean and = false;
