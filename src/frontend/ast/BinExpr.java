@@ -1,6 +1,7 @@
 package frontend.ast;
 
 import frontend.visitors.ASTVisitor;
+import cil.CLABEL;
 
 /**
  * The base class of all binary expressions
@@ -8,6 +9,8 @@ import frontend.visitors.ASTVisitor;
 public abstract class BinExpr extends Expr {
     protected Expr left;
     protected Expr right;
+    protected boolean condExpr;
+    protected CLABEL condLabel;
 
     /**
      * Create a new BinExpr
@@ -47,5 +50,23 @@ public abstract class BinExpr extends Expr {
 
     public void setRight(Expr r) {
         right = r;
+    }
+    
+    //set the result of a condition-expression
+    public void setCondResult(boolean res) {
+    	condExpr = res;
+    }
+    
+    public boolean getCondResult() {
+    	return condExpr;
+    }
+    
+    //set the label a condition-expression
+    public void setCondLabel(CLABEL label) {
+    	condLabel = label;
+    }
+    
+    public CLABEL getCondLabel() {
+    	return condLabel;
     }
 }

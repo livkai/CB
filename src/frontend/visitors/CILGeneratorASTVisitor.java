@@ -156,10 +156,10 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			irf.addParam(params.get(i).getIdentifier().getVariable());
 		}
 		//add local variables to IRFunction
-		Iterator<VarDecl> vdli = n.getBody().getVarDeclList().getVarDecls().iterator();
+		/*Iterator<VarDecl> vdli = n.getBody().getVarDeclList().getVarDecls().iterator();
 		while(vdli.hasNext()){
 			irf.addLocals(vdli.next().getIdentifier().getVariable());
-		}
+		}*/
 		//add IRFunction in list for all IRFunctions
 		irfuncs.add(irf);
 		
@@ -306,7 +306,9 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 
 
 	/**
-	 * Visit this ASTNode (visitor pattern)
+	 * Visit this ASTNode (visitor pattern)ihr eine VarDecl seht, muesst ihr pruefen, obs eine
+  lokale Variable ist und die Variable mit addLocal der
+  IRFunction hinzufuegen. Das
 	 * 
 	 * @param astnode
 	 *            ASTNode to visit
@@ -434,6 +436,10 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	 */
 	public R visit(final VarDecl n, final P param) {
 		prolog(n);
+		//add local variable
+		if(n.getIdentifier().getVariable().getDepth() != 0) {
+			irfuncs.get(irfuncs.size()-1).addLocals(n.getIdentifier().getVariable());
+		}
 		decl(n, param);
 		epilog(n);
 		return null;
@@ -483,7 +489,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 					break;
 				}
 			}
-			if(!falseFlag || (or && !(list.get(list.size()-2)instanceof ANDExpr))/*&& !trueFlag || (!(!trueFlag && !falseFlag))*/){
+			if(!falseFlag || (or && !(list.get(list.size()-2)instanceof ANDExpr) )/*&& !trueFlag || (!(!trueFlag && !falseFlag))*/){
 				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
 				falseLabels.add(label);
 				System.out.println("falseLabel added! Falsesize: " + falseLabels.size());
@@ -726,112 +732,14 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		epilog(astnode);
 		return null;
 	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final LEQExpr astnode, final P param) {
-		prolog(astnode);
-		VirtualRegister[] tmp = new VirtualRegister[2];
-		binexpr(astnode, param,tmp);
-		Operand[] ops = new Operand[2];
-		getOps(astnode, tmp, ops);
-		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
-		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
-		trueLabels.add(label);
-		falseLabels.add(label2);
-		CBLE lesseq = new CBLE(ops[0], ops[1], label);
-		CBRA br = new CBRA(label2);
-		irfuncs.get(irfuncs.size()-1).add(lesseq);
-		irfuncs.get(irfuncs.size()-1).add(br);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASopRight = new RegisterOperand(rightTmp);TNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final LTExpr astnode, final P param) {
-		prolog(astnode);
-		VirtualRegister[] tmp = new VirtualRegister[2];
-		binexpr(astnode, param,tmp);
-		Operand[] ops = new Operand[2];
-		getOps(astnode, tmp, ops);
-		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
-		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
-		trueLabels.add(label);
-		falseLabels.add(label2);
-		CBLT less = new CBLT(ops[0], ops[1], label);
-		CBRA br = new CBRA(label2);
-		irfuncs.get(irfuncs.size()-1).add(less);
-		irfuncs.get(irfuncs.size()-1).add(br);
-		epilog(astnode);
-		return null;
-	}
 	
-	public R visit(final GEQExpr astnode, final P param) {
-		prolog(astnode);
-		VirtualRegister[] tmp = new VirtualRegister[2];
-		binexpr(astnode, param,tmp);
-		Operand[] ops = new Operand[2];
-		getOps(astnode, tmp, ops);
-		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
-		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
-		trueLabels.add(label);
-		falseLabels.add(label2);
-		CBGE greatereq = new CBGE(ops[0], ops[1], label);
-		CBRA br = new CBRA(label2);
-		irfuncs.get(irfuncs.size()-1).add(greatereq);
-		irfuncs.get(irfuncs.size()-1).add(br);
-		epilog(astnode);
-		return null;
-	}
-
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final GTExpr astnode, final P param) {
-		prolog(astnode);
-		VirtualRegister[] tmp = new VirtualRegister[2];
-		binexpr(astnode, param,tmp);
-		Operand[] ops = new Operand[2];
-		getOps(astnode, tmp, ops);
-		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
-		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
-		trueLabels.add(label);
-		falseLabels.add(label2);
-		CBGT greater = new CBGT(ops[0], ops[1], label);
-		CBRA br = new CBRA(label2);
-		irfuncs.get(irfuncs.size()-1).add(greater);
-		irfuncs.get(irfuncs.size()-1).add(br);
-		epilog(astnode);
-		return null;
-	}
-	
-	/**
-	 * Visit this ASTNode (visitor pattern)
-	 * 
-	 * @param astnode
-	 *            ASTNode to visit
-	 */
-	public R visit(final EQExpr astnode, final P param) {
-		prolog(astnode);
-		VirtualRegister[] tmp = new VirtualRegister[2];
-		binexpr(astnode, param,tmp);
-		Operand[] ops = new Operand[2];
-		getOps(astnode, tmp, ops);	
-		CLABEL label; 
+	public void getLabels(BinExpr astnode, CLABEL[] labels) {
+		CLABEL label, label2;
+		//get the right true label
+		//in ORExpr
 		if(list.get(list.size()-2) instanceof ORExpr){
 			label = trueLabels.get(trueLabels.size()-1);
+		//in ANDExpr
 		}else{
 			if(!(list.get(list.size()-2) instanceof IfStmt) && !(list.get(list.size()-2) instanceof WhileStmt)){
 				if(((ANDExpr)list.get(list.size()-2)).getRight().equals(astnode)){
@@ -854,9 +762,11 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 				label = trueLabels.get(trueLabels.size()-1);
 			}
 		}
-		CLABEL label2; 
+		//get the right false label
+		//in ANDExpr
 		if(list.get(list.size()-2) instanceof ANDExpr){
 			label2 = falseLabels.get(falseLabels.size()-1);
+		//in ORExpr
 		}else{
 			if(!(list.get(list.size()-2) instanceof IfStmt) && !(list.get(list.size()-2) instanceof WhileStmt)){
 				if(((ORExpr)list.get(list.size()-2)).getRight().equals(astnode)){
@@ -880,10 +790,108 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 				label2 = falseLabels.get(falseLabels.size()-1);
 			}
 		}
-	//	trueLabels.add(label);
-		//falseLabels.add(label2);
-		CBEQ eq = new CBEQ(ops[0], ops[1], label);
-		CBRA br = new CBRA(label2);
+		labels[0] = label;
+		labels[1] = label2;
+	}
+
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final LEQExpr astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL labels[] = new CLABEL[2];
+		getLabels(astnode, labels);
+		CBLE lesseq = new CBLE(ops[0], ops[1], labels[0]);
+		CBRA br = new CBRA(labels[1]);
+		irfuncs.get(irfuncs.size()-1).add(lesseq);
+		irfuncs.get(irfuncs.size()-1).add(br);
+		epilog(astnode);
+		return null;
+	}
+
+	/**
+	 * Visit this ASopRight = new RegisterOperand(rightTmp);TNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final LTExpr astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL labels[] = new CLABEL[2];
+		getLabels(astnode, labels);
+		CBLT less = new CBLT(ops[0], ops[1], labels[0]);
+		CBRA br = new CBRA(labels[1]);
+		irfuncs.get(irfuncs.size()-1).add(less);
+		irfuncs.get(irfuncs.size()-1).add(br);
+		epilog(astnode);
+		return null;
+	}
+	
+	public R visit(final GEQExpr astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL labels[] = new CLABEL[2];
+		getLabels(astnode, labels);
+		CBGE greatereq = new CBGE(ops[0], ops[1], labels[0]);
+		CBRA br = new CBRA(labels[1]);
+		irfuncs.get(irfuncs.size()-1).add(greatereq);
+		irfuncs.get(irfuncs.size()-1).add(br);
+		epilog(astnode);
+		return null;
+	}
+
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final GTExpr astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);
+		CLABEL labels[] = new CLABEL[2];
+		getLabels(astnode, labels);
+		CBGT greater = new CBGT(ops[0], ops[1], labels[0]);
+		CBRA br = new CBRA(labels[1]);
+		irfuncs.get(irfuncs.size()-1).add(greater);
+		irfuncs.get(irfuncs.size()-1).add(br);
+		epilog(astnode);
+		return null;
+	}
+	
+	/**
+	 * Visit this ASTNode (visitor pattern)
+	 * 
+	 * @param astnode
+	 *            ASTNode to visit
+	 */
+	public R visit(final EQExpr astnode, final P param) {
+		prolog(astnode);
+		VirtualRegister[] tmp = new VirtualRegister[2];
+		binexpr(astnode, param,tmp);
+		Operand[] ops = new Operand[2];
+		getOps(astnode, tmp, ops);	
+		CLABEL labels[] = new CLABEL[2];
+		getLabels(astnode, labels);
+		CBEQ eq = new CBEQ(ops[0], ops[1], labels[0]);
+		CBRA br = new CBRA(labels[1]);
 		irfuncs.get(irfuncs.size()-1).add(eq);
 		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
@@ -902,12 +910,10 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		binexpr(astnode, param,tmp);
 		Operand[] ops = new Operand[2];
 		getOps(astnode, tmp, ops);	
-		CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
-		CLABEL label2 = irfuncs.get(irfuncs.size()-1).getLabel();
-		trueLabels.add(label);
-		falseLabels.add(label2);
-		CBNE neq = new CBNE(ops[0], ops[1], label);
-		CBRA br = new CBRA(label2);
+		CLABEL labels[] = new CLABEL[2];
+		getLabels(astnode, labels);
+		CBNE neq = new CBNE(ops[0], ops[1], labels[0]);
+		CBRA br = new CBRA(labels[1]);
 		irfuncs.get(irfuncs.size()-1).add(neq);
 		irfuncs.get(irfuncs.size()-1).add(br);
 		epilog(astnode);
