@@ -457,19 +457,22 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		System.out.println("TrueFlag: "+trueFlag);
 		if(n instanceof ORExpr) {
 			System.out.println("ORExpr:");
-			//check whether an ORExpr is an ancestor of the current node
+			//check whether an ANDExpr is an ancestor of the current node
 			boolean and = false;
 			for(ASTNode ast : list){
-				if(ast instanceof ANDExpr && !ast.equals(n)){
+				if(ast instanceof ANDExpr){
 					and = true;
 					break;
 				}
 			}
+			//create new label if trueFlag is false or "and" was set before and the parent of the current node is not an ORExpr
 			if(!trueFlag || (and && !(list.get(list.size()-2) instanceof ORExpr))/*&& !falseFlag || (!(!trueFlag && !falseFlag))*/){
 				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
 				trueLabels.add(label);
 				System.out.println("trueLabel added! Truesize: " + trueLabels.size());
 			}
+			//set trueFlag to true if one of the children is AND or OR 
+			//..aber keine ahnung mehr warum genau ich des da rein hab..
 			if(n.getLeft() instanceof ANDExpr || n.getLeft() instanceof ORExpr || n.getRight() instanceof ANDExpr || n.getRight() instanceof ORExpr){
 				trueFlag = true;
 			}
@@ -481,19 +484,22 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		}
 		if(n instanceof ANDExpr) {
 			System.out.println("ANDExpr");
-			//check whether an ANDExpr is an ancestor of the current node
+			//check whether an ORExpr is an ancestor of the current node
 			boolean or = false;
 			for(ASTNode ast : list){
-				if(ast instanceof ORExpr && !ast.equals(n)){
+				if(ast instanceof ORExpr){
 					or = true;
 					break;
 				}
 			}
+			//create new label if falseFlag is false or "or" was set before and the parent of the current node is not an ANDExpr
 			if(!falseFlag || (or && !(list.get(list.size()-2)instanceof ANDExpr) )/*&& !trueFlag || (!(!trueFlag && !falseFlag))*/){
 				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
 				falseLabels.add(label);
 				System.out.println("falseLabel added! Falsesize: " + falseLabels.size());
 			}
+			//set falseFlag to true if one of the children is AND or OR 
+			//..aber keine ahnung mehr warum genau ich des da rein hab..
 			if(n.getLeft() instanceof ANDExpr || n.getLeft() instanceof ORExpr || n.getRight() instanceof ANDExpr || n.getRight() instanceof ORExpr){
 				falseFlag = true;
 			}
