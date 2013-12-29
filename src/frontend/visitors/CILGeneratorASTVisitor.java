@@ -38,6 +38,8 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	protected ArrayList<CLABEL> falseLabels;
 	protected boolean trueFlag;
 	protected boolean falseFlag;
+	protected boolean visitTrueFlag;
+	protected boolean visitFalseFlag;
 	
 	/**
 	 * prolog. 
@@ -458,49 +460,50 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		if(n instanceof ORExpr) {
 			System.out.println("ORExpr:");
 			//check whether an ORExpr is an ancestor of the current node
-			boolean and = false;
+			/*boolean and = false;
 			for(ASTNode ast : list){
 				if(ast instanceof ANDExpr && !ast.equals(n)){
 					and = true;
 					break;
 				}
-			}
-			if(!trueFlag || (and && !(list.get(list.size()-2) instanceof ORExpr))/*&& !falseFlag || (!(!trueFlag && !falseFlag))*/){
-				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+			}*/
+			//if(!trueFlag || (and && !(list.get(list.size()-2) instanceof ORExpr))/* && !(list.get(list.size()-3) instanceof ORExpr))&& !falseFlag || (!(!trueFlag && !falseFlag))*/){
+				/*CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
 				trueLabels.add(label);
 				System.out.println("trueLabel added! Truesize: " + trueLabels.size());
 			}
+			//|| ((BinExpr)n.getLeft()).getLeft() instanceof ANDExpr || ((BinExpr)n.getLeft()).getRight() instanceof ORExpr || ((BinExpr)n.getRight()).getLeft() instanceof ANDExpr || ((BinExpr)n.getRight()).getRight() instanceof ORExpr
 			if(n.getLeft() instanceof ANDExpr || n.getLeft() instanceof ORExpr || n.getRight() instanceof ANDExpr || n.getRight() instanceof ORExpr){
 				trueFlag = true;
-			}
+			}*/
 			n.getLeft().accept(this, param);
 			irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
 			falseLabels.remove(falseLabels.size()-1);
-			System.out.println("falseLabel removed! Falsesize: " + falseLabels.size());
+			System.out.println("falseLabel removed! Falsesize: " + falseLabels.size() + "inhalt: " + falseLabels.toString());
 			n.getRight().accept(this, param);
 		}
 		if(n instanceof ANDExpr) {
 			System.out.println("ANDExpr");
 			//check whether an ANDExpr is an ancestor of the current node
-			boolean or = false;
+			/*boolean or = false;
 			for(ASTNode ast : list){
 				if(ast instanceof ORExpr && !ast.equals(n)){
 					or = true;
 					break;
 				}
-			}
-			if(!falseFlag || (or && !(list.get(list.size()-2)instanceof ANDExpr) )/*&& !trueFlag || (!(!trueFlag && !falseFlag))*/){
-				CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
+			}*/
+			//if(!falseFlag || (or && !(list.get(list.size()-2)instanceof ANDExpr)) /* && !(list.get(list.size()-3)instanceof ANDExpr) )&& !trueFlag || (!(!trueFlag && !falseFlag))*/){
+				/*CLABEL label = irfuncs.get(irfuncs.size()-1).getLabel();
 				falseLabels.add(label);
 				System.out.println("falseLabel added! Falsesize: " + falseLabels.size());
 			}
 			if(n.getLeft() instanceof ANDExpr || n.getLeft() instanceof ORExpr || n.getRight() instanceof ANDExpr || n.getRight() instanceof ORExpr){
 				falseFlag = true;
-			}
+			}*/
 			n.getLeft().accept(this, param);
 			irfuncs.get(irfuncs.size()-1).add(trueLabels.get(trueLabels.size()-1));
 			trueLabels.remove(trueLabels.size()-1);
-			System.out.println("trueLabel removed! Truesize: " + trueLabels.size());
+			System.out.println("trueLabel removed! Truesize: " + trueLabels.size()+ "inhalt: " + trueLabels.toString());
 			n.getRight().accept(this, param);
 		}
 		return;
@@ -674,9 +677,13 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			irfuncs.get(irfuncs.size()-1).add(falseLabels.get(falseLabels.size()-1));
 		}
 		falseLabels.remove(falseLabels.size()-1);
+		System.out.println("in Ifstmt after remove falseLabel, size= " + falseLabels.size());
 		trueLabels.remove(trueLabels.size()-1);
+		System.out.println("in Ifstmt after remove trueLabel, size= " + trueLabels.size());
 		falseFlag = false;
 		trueFlag = false;
+		visitFalseFlag = false;
+		visitTrueFlag = false;
 		epilog(astnode);
 		return null;
 	}
@@ -701,6 +708,8 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 		trueLabels.remove(trueLabels.size()-1);
 		falseFlag = false;
 		trueFlag = false;
+		visitFalseFlag = false;
+		visitTrueFlag = false;
 		epilog(astnode);
 		return null;
 	}
@@ -734,6 +743,69 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	}
 	
 	public void getLabels(BinExpr astnode, CLABEL[] labels) {
+		CLABEL label, label2;
+		label = null;
+		label2 = null;
+		if(trueLabels.isEmpty()) {
+			label = irfuncs.get(irfuncs.size()-1).getLabel();
+			trueLabels.add(label);
+			System.out.println("getLabels AND, new trueLabel"  + trueLabels.toString());
+		}else {
+			label = trueLabels.get(trueLabels.size()-1);
+			System.out.println("getLabels vorhandenes trueLabel" + trueLabels.toString());
+		}
+		
+		if(falseLabels.isEmpty()) {
+			label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+			falseLabels.add(label2);
+			System.out.println("getLabels AND, new falseLabel" + falseLabels.toString());
+		}else {
+			label2 = falseLabels.get(falseLabels.size()-1);
+			System.out.println("getLabels vorhandenes falseLabel" + falseLabels.toString());
+		}
+		/*if(list.get(list.size()-2) instanceof ANDExpr){
+			if(trueLabels.isEmpty()) {
+				label = irfuncs.get(irfuncs.size()-1).getLabel();
+				System.out.println("getLabels AND, new trueLabel" + label);
+				trueLabels.add(label);
+			}else {
+				label = trueLabels.get(trueLabels.size()-1);
+				System.out.println("in getLabels AND, isEmpty false, size= " + trueLabels.size()+ "inhalt: " + trueLabels.toString());
+			}
+			//System.out.println("list.size()-3: " + list.get(list.size()-3));
+			//if(!(list.get(list.size()-3) instanceof IfStmt) && !(list.get(list.size()-3) instanceof WhileStmt)){
+			if(visitTrueFlag) {	
+				label2 = falseLabels.get(falseLabels.size()-1);
+				System.out.println("in getLabels AND, kein if vorhandenes false holen, size= " + falseLabels.size()+ "inhalt: " + falseLabels.toString());
+			}else {
+				label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+				falseLabels.add(label2);
+				System.out.println("in getLabels AND, if neues false holen, size= " + falseLabels.size()+ "inhalt: " + falseLabels.toString());
+				visitTrueFlag = true;
+			}	
+		}
+		
+		if(list.get(list.size()-2) instanceof ORExpr){
+			label2 = irfuncs.get(irfuncs.size()-1).getLabel();
+			falseLabels.add(label2);
+			System.out.println("getLabels OR, new falseLabel" + label2);
+			System.out.println("list.size()-3: " + list.get(list.size()-3));
+			if(visitFalseFlag) {
+			//if(!(list.get(list.size()-3) instanceof IfStmt) && !(list.get(list.size()-3) instanceof WhileStmt)){
+				label = trueLabels.get(trueLabels.size()-1);
+				System.out.println("in getLabels OR, kein if vorhandenes true holen, size= " + trueLabels.size()+ "inhalt: " + trueLabels.toString());
+			}else {
+				label = irfuncs.get(irfuncs.size()-1).getLabel();
+				trueLabels.add(label);
+				System.out.println("in getLabels OR, if neues true holen, size= " + trueLabels.size() + "inhalt: " + trueLabels.toString());
+				visitFalseFlag = true;
+			}	
+		}*/
+		
+		labels[0] = label;
+		labels[1] = label2;
+	}
+	public void getLabels2(BinExpr astnode, CLABEL[] labels) {
 		CLABEL label, label2;
 		//get the right true label
 		//in ORExpr
