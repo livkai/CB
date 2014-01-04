@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import cil.IRProgram;
+import cil.visitors.CILVisitor;
 import cil.visitors.DumpCILVisitor;
+import cil.visitors.FPOffsetCILVisitor;
 
 import com.martiansoftware.jsap.AbstractParameter;
 import com.martiansoftware.jsap.FlaggedOption;
@@ -343,7 +345,16 @@ public final class Compiler {
 		 * add and call visitors that should traverse the intermediate
 		 * code here.
 		 */
-
+		ArrayList<CILVisitor> cilvisitors = new ArrayList<CILVisitor>();
+		FPOffsetCILVisitor  offsetvisitor = new FPOffsetCILVisitor(inputFile);
+		cilvisitors.add(offsetvisitor);
+		
+		
+		for(CILVisitor cil : cilvisitors){
+			newRoot = CILGeneratorASTVisitor.getIRProgram();
+			cil.visit(newRoot);
+		}
+		
 		/*
 		 * Generate the object file/executable now.
 		 * TODO for exercise 7: Enable this code once your compiler

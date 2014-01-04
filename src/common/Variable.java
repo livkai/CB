@@ -14,12 +14,14 @@ public class Variable {
 	private int depth;
 	private String file;
 	private int line;
+	private int offset;
     
 	public Variable(String name, Type t, String file, int line) {
 		this.name = name;
 		this.type = t;
 		this.file = file;
 		this.line = line;
+		offset = -1;
 	}	
 	public Variable(String name, Type t) {
 		this.name = name;
@@ -51,6 +53,14 @@ public class Variable {
 	
 	public int getLine(){
 		return line;
-	}	
+	}
+	
+	public int getOffset(){
+		return offset;
+	}
+	
+	public void setOffset(int off){
+		offset = off;
+	}
 }
 

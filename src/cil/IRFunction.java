@@ -129,4 +129,16 @@ public final class IRFunction {
         String cn = this.getClass().getName();
         return cn.substring(cn.lastIndexOf('.') + 1, cn.length());
     }
+    
+    public ArrayList<Variable> getParams(){
+    	return params;
+    }
+    
+    public ArrayList<Variable> getLocals(){
+    	return locals;
+    }
+    
+    public ArrayList<VirtualRegister> getVirtRegs(){
+    	return virtregs;
+    }
 }

@@ -7,6 +7,7 @@ import common.Type;
  */
 public final class VirtualRegister extends Register {
 
+	private int offset;
     /**
      * Creates a new VirtualRegister
      * 
@@ -17,6 +18,15 @@ public final class VirtualRegister extends Register {
      */
     public VirtualRegister(final String name, final Type type) {
         super(name, type);
+        offset = -1;
+    }
+    
+    public int getOffset(){
+    	return offset;
+    }
+    
+    public void setOffset(int off){
+    	offset = off;
     }
     
 }
