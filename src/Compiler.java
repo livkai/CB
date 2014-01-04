@@ -9,6 +9,8 @@ import cil.IRProgram;
 import cil.visitors.CILVisitor;
 import cil.visitors.DumpCILVisitor;
 import cil.visitors.FPOffsetCILVisitor;
+import cil.visitors.RegisterCILVisitor;
+
 
 import com.martiansoftware.jsap.AbstractParameter;
 import com.martiansoftware.jsap.FlaggedOption;
@@ -304,7 +306,6 @@ public final class Compiler {
 		 */
 		int index = 0;
 		for(ASTVisitor<?,?> av : astvisitors) {
-			//newRoot = (IRProgram)av.visit(root, null);
 			av.visit(root, null);
 			if (av.getErrors() != 0) {
 				System.exit(1); // errors occured
@@ -320,10 +321,14 @@ public final class Compiler {
 			}
 			index++;
 		}
-
+		
+		ArrayList<CILVisitor> cilvisitors = new ArrayList<CILVisitor>();
+		RegisterCILVisitor regVisitor = new RegisterCILVisitor(inputFile);
+		cilvisitors.add(regVisitor);
+		
+		newRoot = CILGeneratorASTVisitor.getIRProgram();
 		if (dumpCIL) {
 			DumpCILVisitor visitor = new DumpCILVisitor(inputFile.replace(".e","") + ".cil");
-			newRoot = CILGeneratorASTVisitor.getIRProgram();
 			visitor.visit(newRoot);
 			/* TODO for execerice 4: Dump CIL code before the other CIL visitors are run */
 		}
@@ -345,16 +350,29 @@ public final class Compiler {
 		 * add and call visitors that should traverse the intermediate
 		 * code here.
 		 */
-		ArrayList<CILVisitor> cilvisitors = new ArrayList<CILVisitor>();
 		FPOffsetCILVisitor  offsetvisitor = new FPOffsetCILVisitor(inputFile);
 		cilvisitors.add(offsetvisitor);
 		
 		
-		for(CILVisitor cil : cilvisitors){
-			newRoot = CILGeneratorASTVisitor.getIRProgram();
-			cil.visit(newRoot);
+		int index2 = 0;
+		for(CILVisitor cv : cilvisitors) {
+			cv.visit(newRoot);
+			if (cv.getErrors() != 0) {
+				System.exit(1); // errors occured
+			}
+			if (dumpCIL) {
+				DumpCILVisitor visitor = new DumpCILVisitor(inputFile.replace(".e","") + index2 + ".cil");
+				visitor.visit(newRoot);
+				/*
+				 * TODO for exercise 1: Dump AST again after an
+				 * AST visitor has run. Be sure to write the output to
+				 * another .dot file.
+				 */
+			}
+			index2++;
 		}
-		
+
+
 		/*
 		 * Generate the object file/executable now.
 		 * TODO for exercise 7: Enable this code once your compiler

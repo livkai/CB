@@ -3,6 +3,7 @@ package cil.visitors;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import cil.CLABEL;
 import cil.ICode;
@@ -19,6 +20,7 @@ public final class DumpCILVisitor extends CILVisitorAdapter {
     private BufferedWriter bw;
 
     private final String filename;
+ 
 
     /**
      * Creates a new DumpCILVisitor
@@ -38,7 +40,8 @@ public final class DumpCILVisitor extends CILVisitorAdapter {
             errors++;
         }
     }
-
+    
+ 
     /**
      * Visit this ICode (visitor pattern)
      * 
@@ -46,7 +49,7 @@ public final class DumpCILVisitor extends CILVisitorAdapter {
      *            ICode to visit
      */
     public final void visit(final CLABEL icode) {
-        write(icode.toString());
+        write("#" + icode.toString());
         return;
     }
 
@@ -58,7 +61,7 @@ public final class DumpCILVisitor extends CILVisitorAdapter {
      */
     public final void visit(final IRProgram icodeprogram) {
 	for(Variable v : icodeprogram.globalVariables()) {
-		write(v.toString());
+		write("#" + v.toString());
 	}
 
         super.visit(icodeprogram);
@@ -81,11 +84,11 @@ public final class DumpCILVisitor extends CILVisitorAdapter {
      *            ICodeFunction to visit
      */
     public final void visit(final IRFunction icodefunc) {
-        write("--- [ BEGIN ] [" + icodefunc + "] ---");
+        write("#" + "--- [ BEGIN ] [" + icodefunc + "] ---");
         super.visit(icodefunc);
-        write("--- [  END  ] [" + icodefunc + "] ---");
-        write("");
-        write("");
+        write("#" +  "--- [  END  ] [" + icodefunc + "] ---");
+        write("#" + "");
+        write("#" + "");
         return;
     }
 
@@ -96,7 +99,7 @@ public final class DumpCILVisitor extends CILVisitorAdapter {
      *            ICode to process
      */
     protected final void process(final ICode icode) {
-        write("\t" + icode);
+        write("#" + "\t" + icode);
         return;
     }
 
