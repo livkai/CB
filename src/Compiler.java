@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import cil.IRProgram;
+import cil.visitors.CILVisitor;
 import cil.visitors.DumpCILVisitor;
+import cil.visitors.RegisterCILVisitor;
 
 import com.martiansoftware.jsap.AbstractParameter;
 import com.martiansoftware.jsap.FlaggedOption;
@@ -302,7 +304,6 @@ public final class Compiler {
 		 */
 		int index = 0;
 		for(ASTVisitor<?,?> av : astvisitors) {
-			//newRoot = (IRProgram)av.visit(root, null);
 			av.visit(root, null);
 			if (av.getErrors() != 0) {
 				System.exit(1); // errors occured
@@ -318,7 +319,11 @@ public final class Compiler {
 			}
 			index++;
 		}
-
+		
+		ArrayList<CILVisitor> cilvisitors = new ArrayList<CILVisitor>();
+		RegisterCILVisitor regVisitor = new RegisterCILVisitor(inputFile);
+		cilvisitors.add(regVisitor);
+		
 		if (dumpCIL) {
 			DumpCILVisitor visitor = new DumpCILVisitor(inputFile.replace(".e","") + ".cil");
 			newRoot = CILGeneratorASTVisitor.getIRProgram();
@@ -343,6 +348,23 @@ public final class Compiler {
 		 * add and call visitors that should traverse the intermediate
 		 * code here.
 		 */
+		int index2 = 0;
+		for(CILVisitor cv : cilvisitors) {
+			cv.visit(newRoot);
+			if (cv.getErrors() != 0) {
+				System.exit(1); // errors occured
+			}
+			if (dumpCIL) {
+				DumpCILVisitor visitor = new DumpCILVisitor(inputFile.replace(".e","") + index2 + ".cil");
+				visitor.visit(newRoot);
+				/*
+				 * TODO for exercise 1: Dump AST again after an
+				 * AST visitor has run. Be sure to write the output to
+				 * another .dot file.
+				 */
+			}
+			index2++;
+		}
 
 		/*
 		 * Generate the object file/executable now.
