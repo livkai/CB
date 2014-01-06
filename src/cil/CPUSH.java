@@ -12,7 +12,7 @@ public final class CPUSH extends CSingle {
      * Creates a new CPUSH
      * 
      * @param operand
-     *            operand that will be pusched onto the stack
+     *            operand that will be pushed onto the stack
      */
     public CPUSH(final Operand operand) {
         super(operand);

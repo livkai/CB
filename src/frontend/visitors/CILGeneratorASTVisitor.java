@@ -253,7 +253,6 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			n.getArgList().accept(this, param);
 		}
 		Operand op = null;
-		
 		//create a new VirtualRegister for the current IRFunction
 		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(n.getType());
 		vrList.add(vr);

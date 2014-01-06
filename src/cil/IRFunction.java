@@ -92,7 +92,7 @@ public final class IRFunction {
      * 	The type the register should have
      */
     public HardwareRegister getHardReg(Type t) {
-    	//assert !freeHardregs.isEmpty();
+    	assert !freeHardregs.isEmpty();
 	    HardwareRegister hr = new HardwareRegister(freeHardregs.get(0), t);
 	    freeHardregs.remove(0);
 	    hardregs.add(hr);
@@ -101,6 +101,14 @@ public final class IRFunction {
     
     public HardwareRegister getHardReg(int i) {
     	return hardregs.get(i);
+    }
+    
+    public HardwareRegister getHardReg(String name, Type t) {
+    	assert freeHardregs.contains(name);
+    	HardwareRegister hr = new HardwareRegister(name, t);
+    	freeHardregs.remove(name);
+	    hardregs.add(hr);
+    	return hr;
     }
 
     public CLABEL getLabel() {
