@@ -40,7 +40,7 @@ public class FPOffsetCILVisitor extends CILVisitorAdapter {
     			for(int i=0; i< local.getType().getNumDimensions();i++){
     				arraysize *= local.getType().getDimSize(i);
     			}
-    			offset += arraysize;
+    			offset += arraysize*4;
     		}
     		else{
     			offset +=4;

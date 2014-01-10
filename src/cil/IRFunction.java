@@ -39,11 +39,7 @@ public final class IRFunction {
 	hardregs = new ArrayList<HardwareRegister>();
 	freeHardregs = new ArrayList<String>();
 	freeHardregs.add("%eax");
-	freeHardregs.add("%ebx");
-	freeHardregs.add("%ecx");
 	freeHardregs.add("%edx");
-	freeHardregs.add("%edi");
-	freeHardregs.add("%esi");
 	icodes = new ICodeList();
     }
 
