@@ -253,7 +253,6 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			n.getArgList().accept(this, param);
 		}
 		Operand op = null;
-		
 		//create a new VirtualRegister for the current IRFunction
 		VirtualRegister vr = irfuncs.get(irfuncs.size()-1).getVirtReg(n.getType());
 		vrList.add(vr);
@@ -708,14 +707,14 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			}
 		}
 		//test if we need a new true label or an existing one
-		if(trueLabels.size() <= count) {
+		if(trueLabels.size() <= count|| (list.get(list.size()-2) instanceof ANDExpr && ((ANDExpr)list.get(list.size()-2)).getLeft().equals(astnode))) {
 			label = irfuncs.get(irfuncs.size()-1).getLabel();
 			trueLabels.add(label);
 		}else {
 			label = trueLabels.get(trueLabels.size()-1);
 		}
 		//test if we need a new false label or an existing one
-		if(falseLabels.size() <= count) {
+		if(falseLabels.size() <= count || (list.get(list.size()-2) instanceof ORExpr && ((ORExpr)list.get(list.size()-2)).getLeft().equals(astnode))) {
 			label2 = irfuncs.get(irfuncs.size()-1).getLabel();
 			falseLabels.add(label2);
 		}else {
