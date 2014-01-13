@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import cil.IRProgram;
+import cil.visitors.AssemblerCILVisitor;
 import cil.visitors.CILVisitor;
 import cil.visitors.DumpCILVisitor;
 import cil.visitors.FPOffsetCILVisitor;
@@ -322,9 +323,6 @@ public final class Compiler {
 			index++;
 		}
 		
-		ArrayList<CILVisitor> cilvisitors = new ArrayList<CILVisitor>();
-		RegisterCILVisitor regVisitor = new RegisterCILVisitor(inputFile);
-		cilvisitors.add(regVisitor);
 		
 		newRoot = CILGeneratorASTVisitor.getIRProgram();
 		if (dumpCIL) {
@@ -350,8 +348,14 @@ public final class Compiler {
 		 * add and call visitors that should traverse the intermediate
 		 * code here.
 		 */
+		ArrayList<CILVisitor> cilvisitors = new ArrayList<CILVisitor>();
+		RegisterCILVisitor regVisitor = new RegisterCILVisitor(inputFile);
+		cilvisitors.add(regVisitor);
+		
 		FPOffsetCILVisitor  offsetvisitor = new FPOffsetCILVisitor(inputFile);
 		cilvisitors.add(offsetvisitor);
+		AssemblerCILVisitor  assemblervisitor = new AssemblerCILVisitor(inputFile);
+		cilvisitors.add(assemblervisitor);
 		
 		
 		int index2 = 0;
