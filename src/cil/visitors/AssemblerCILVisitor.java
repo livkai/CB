@@ -5,12 +5,15 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import common.Variable;
+
 import cil.*;
 
 public class AssemblerCILVisitor extends CILVisitorAdapter{
 	private FileWriter fw;
 	private BufferedWriter writer;
 	private File file;
+	private int paramCount = 0;
 	
 	public AssemblerCILVisitor(String name) {
 		super(name);
@@ -36,7 +39,8 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      */
     public void visit(final CADD icode) {
     	try {
-			writer.append("\t add " + icode.getLeftOperand() + ", " + icode.getRightOperand() + "\n");
+    		writer.append("\t addl " + icode.getRightOperand() + ", " + icode.getLeftOperand() + "\n");
+    		writer.flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -52,10 +56,32 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CASSGN icode) {
+    	try {
+    		writer.append("\t movl " + getOpCode(icode.getOperand()) + " , " + getOpCode(icode.getTargetOperand())+"\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
 
+   
+    
+    private String getOpCode(Operand operand){
+		if(operand instanceof RegisterOperand && ((RegisterOperand)operand).getRegister() instanceof HardwareRegister) {
+			return operand.toString();
+		}else if(operand instanceof ConstOperand) {
+			return "$" +  operand;
+		}else if(operand instanceof RegisterOperand && ((RegisterOperand)operand).getRegister() instanceof VirtualRegister) {
+			return ((VirtualRegister)((RegisterOperand) operand).getRegister()).getOffset() + "(%ebp)";
+		}else{
+			return ((VariableOperand) operand).getVariable().getOffset() + "(%ebp)";
+		}
+    }
+    
     /**
      * Visit this ICode (visitor pattern)
      * 
@@ -63,6 +89,15 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CBEQ icode) {
+    	try {
+    		writer.append("\t cmpl " + getOpCode(icode.getRightOperand()) + " , " + getOpCode(icode.getLeftOperand())+"\n");
+    		writer.append("\t je " + icode.getLabel()  + "\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -74,6 +109,15 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CBGE icode) {
+    	try {
+    		writer.append("\t cmpl " + getOpCode(icode.getRightOperand()) + " , " + getOpCode(icode.getLeftOperand())+"\n");
+    		writer.append("\t jge " + icode.getLabel()  + "\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -85,6 +129,15 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CBGT icode) {
+    	try {
+    		writer.append("\t cmpl " + getOpCode(icode.getRightOperand()) + " , " + getOpCode(icode.getLeftOperand())+"\n");
+    		writer.append("\t jg " + icode.getLabel()  + "\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -96,6 +149,15 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CBLE icode) {
+    	try {
+    		writer.append("\t cmpl " + getOpCode(icode.getRightOperand()) + " , " + getOpCode(icode.getLeftOperand())+"\n");
+    		writer.append("\t jle " + icode.getLabel()  + "\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -107,6 +169,15 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CBLT icode) {
+    	try {
+    		writer.append("\t cmpl " + getOpCode(icode.getRightOperand()) + " , " + getOpCode(icode.getLeftOperand())+"\n");
+    		writer.append("\t jl " + icode.getLabel()  + "\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -118,6 +189,15 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CBNE icode) {
+    	try {
+    		writer.append("\t cmpl " + getOpCode(icode.getRightOperand()) + " , " + getOpCode(icode.getLeftOperand())+"\n");
+    		writer.append("\t jne " + icode.getLabel()  + "\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -129,6 +209,14 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CBRA icode) {
+    	try {
+    		writer.append("\t jmp " + icode.getLabel()  + "\n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -140,6 +228,17 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CCALL icode) {
+    	
+    	try {
+			writer.append("\t call " + icode.getName() + "\n");
+			writer.append("\t addl $"+paramCount*4 + ",%esp \n");
+			writer.append("\t movl %eax,"+getOpCode(icode.getTargetOperand())+"\n");
+			writer.flush();
+	    	paramCount = 0;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -157,6 +256,7 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
     		writer.append(" \t movl %eax, %edx \n");
     		writer.append(" \t sarl $31, %edx \n");
     		writer.append(" \t idivl %ebx \n");
+    		writer.flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -173,6 +273,14 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CLABEL icode) {
+    	try {
+    		writer.append(icode.toString()+ ": \n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -196,7 +304,8 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      */
     public void visit(final CMUL icode) {
     	try {
-			writer.append("\t mul " + icode.getLeftOperand() + ", " + icode.getRightOperand() + "\n");
+    		writer.append("\t mul " + icode.getRightOperand() + ", " + icode.getLeftOperand() + "\n");
+    		writer.flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -212,6 +321,14 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CPUSH icode) {
+    	try {
+    		writer.append("\t pushl " + getOpCode(icode.getOperand()) + "\n");
+   		 	writer.flush();
+			paramCount++;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -234,6 +351,17 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CRET icode) {
+    	try {
+    		writer.append("\t movl %ebp, %esp \n");
+    		writer.append("\t popl %ebp \n");
+    		writer.append("\t movl " + getOpCode(icode.getOperand()) + ", %eax \n");
+    		writer.append("\t ret \n");
+    		writer.flush();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
         process(icode);
         return;
     }
@@ -257,7 +385,9 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      */
     public void visit(final CSUB icode) {
     	try {
-			writer.append("\t sub " + icode.getLeftOperand() + ", " + icode.getRightOperand() + "\n");
+    		 writer.append("\t subl " + icode.getRightOperand() + ", " + icode.getLeftOperand() + "\n");
+    		 writer.flush();
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -309,6 +439,24 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
     	// make sure we don't visit a deleted instruction.
     	try {
 			writer.append(icodefunc.getName() + ": \n");
+			writer.append("\t pushl %ebp \n");
+			writer.append("\t movl %esp, %ebp \n");
+	    	for(Variable local : icodefunc.getLocals()){
+	    		if(local.getType().isArrayType()){
+	    			int arraysize = 1;
+	    			for(int i=0; i< local.getType().getNumDimensions();i++){
+	    				arraysize *= local.getType().getDimSize(i);
+	    			}
+	    			writer.append("\t subl $" + arraysize + ", %esp \n");
+	    		}
+	    		else{
+	    			writer.append("\t subl $4, %esp \n");
+	    		}
+	    	}
+	    	
+	    	for(VirtualRegister virtreg : icodefunc.getVirtRegs()){
+	    		writer.append("\t subl $4, %esp \n");
+	    	}
 			writer.flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
