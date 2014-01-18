@@ -78,6 +78,9 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
 		}else if(operand instanceof RegisterOperand && ((RegisterOperand)operand).getRegister() instanceof VirtualRegister) {
 			return ((VirtualRegister)((RegisterOperand) operand).getRegister()).getOffset() + "(%ebp)";
 		}else{
+			if(((VariableOperand) operand).getVariable().getOffset() == -1){
+				return ((VariableOperand) operand).getVariable().getName();
+			}
 			return ((VariableOperand) operand).getVariable().getOffset() + "(%ebp)";
 		}
     }
@@ -291,7 +294,26 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      * @param icode
      *            ICode to visit
      */
+    //kein plan, soll erstmal so laufen..^^
     public void visit(final CLOAD icode) {
+    	if(((VariableOperand)icode.getBaseOperand()).getVariable().getOffset() == -1){
+    		try {
+				writer.append("\t mul $4,"+ getOpCode(icode.getOffsetOperand()));
+				writer.append("\t movl " + ((VariableOperand)icode.getBaseOperand()).getVariable().getName() + "+"+getOpCode(icode.getOffsetOperand()) + ","+icode.getTargetOperand());
+    		} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}else{
+    		try {
+				writer.append("\t mul $-4,"+ getOpCode(icode.getOffsetOperand()));
+				writer.append("\t addl $"+((VariableOperand)icode.getBaseOperand()).getVariable().getOffset()+","+getOpCode(icode.getOffsetOperand()));
+			//	writer.append("\t movl " + getOpCode(icode.getOffsetOperand())"+"+getOpCode(icode.getOffsetOperand()) + ","+icode.getTargetOperand());
+    		} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
         process(icode);
         return;
     }
@@ -415,11 +437,48 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
 			e.printStackTrace();
 		}
 		writer = new BufferedWriter(fw);
-
+		try {
+			writer.append("\t .global _start\n");
+	    	for(IRFunction ff : icodeprogram.functions()) {
+	    		writer.append("\t .global " +ff.getName() +"\n");
+	    	}
+	    	writer.append("\n");
+			writer.append("_start:\n");
+			writer.append("\t call main\n");
+			writer.append("\t movl	%eax, %ebx \n");
+			writer.append("\t movl	$1, %eax	# Syscall-Code f. exit \n");
+			writer.append("\t int	$0x80 \n");
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
     	for(IRFunction ff : icodeprogram.functions()) {
     		currentFunction = ff;
     		currentFunction.accept(this);
     	}
+		for(Variable global : icodeprogram.globalVariables()){
+			if(global.getType().isRealType()){
+				System.err.println("Real type is not supported!");
+				System.exit(1);
+			}else if(global.getType().isArrayType()){
+    			if(global.getType().getArrayElementType().isRealType()){
+	    			System.err.println("Real type is not supported!");
+	    			System.exit(1);
+    			}
+    			try {
+    				int size=4;
+    				for(int i=0;i<global.getType().getNumDimensions();i++){
+    					size *= global.getType().getDimSize(i);
+    				}
+					writer.append("\t .lcomm "+global.getName()+","+size+"\n");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}else{
+				
+			}
+		}
     	return;
     }
 
@@ -443,11 +502,19 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
 			writer.append("\t movl %esp, %ebp \n");
 	    	for(Variable local : icodefunc.getLocals()){
 	    		if(local.getType().isArrayType()){
+	    			if(local.getType().getArrayElementType().isRealType()){
+		    			System.err.println("Real type is not supported!");
+		    			System.exit(1);
+	    			}
 	    			int arraysize = 1;
 	    			for(int i=0; i< local.getType().getNumDimensions();i++){
 	    				arraysize *= local.getType().getDimSize(i);
 	    			}
 	    			writer.append("\t subl $" + arraysize + ", %esp \n");
+	    		}
+	    		else if(local.getType().isRealType()){
+	    			System.err.println("Real type is not supported!");
+	    			System.exit(1);
 	    		}
 	    		else{
 	    			writer.append("\t subl $4, %esp \n");
@@ -455,6 +522,10 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
 	    	}
 	    	
 	    	for(VirtualRegister virtreg : icodefunc.getVirtRegs()){
+	    		if(virtreg.getType().isRealType()){
+	    			System.err.println("Real type is not supported!");
+	    			System.exit(1);
+	    		}
 	    		writer.append("\t subl $4, %esp \n");
 	    	}
 			writer.flush();
