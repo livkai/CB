@@ -32,9 +32,8 @@ public class FPOffsetCILVisitor extends CILVisitorAdapter {
     		icodefunc.getParams().get(i).setOffset(offset);
     		offset +=4;
     	}
-    	offset = -4;
+    	offset = 0;
     	for(Variable local : icodefunc.getLocals()){
-    		local.setOffset(offset);
     		if(local.getType().isArrayType()){
     			int arraysize = 1;
     			for(int i=0; i< local.getType().getNumDimensions();i++){
@@ -45,11 +44,13 @@ public class FPOffsetCILVisitor extends CILVisitorAdapter {
     		else{
     			offset -=4;
     		}
+    		local.setOffset(offset);
+    		
     	}
     	
     	for(VirtualRegister virtreg : icodefunc.getVirtRegs()){
-    		virtreg.setOffset(offset);
     		offset -=4;
+    		virtreg.setOffset(offset);
     	}
     	
     	return;

@@ -311,8 +311,8 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 				CRET ret = new CRET(new RegisterOperand(hr));
 				irfuncs.get(irfuncs.size()-1).addBefore(icode, ret);
 				//copy operand back from hardReg to virtReg
-				CASSGN assgn2 = new CASSGN(new RegisterOperand(vr), new RegisterOperand(hr));
-				irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
+	//			CASSGN assgn2 = new CASSGN(new RegisterOperand(vr), new RegisterOperand(hr));
+			//	irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
 	            irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     			irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
     		}

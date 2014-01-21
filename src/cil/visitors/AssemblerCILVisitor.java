@@ -296,19 +296,20 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      */
     //kein plan, soll erstmal so laufen..^^
     public void visit(final CLOAD icode) {
+    	// check whether array is global
     	if(((VariableOperand)icode.getBaseOperand()).getVariable().getOffset() == -1){
     		try {
-				writer.append("\t mul $4,"+ getOpCode(icode.getOffsetOperand()));
-				writer.append("\t movl " + ((VariableOperand)icode.getBaseOperand()).getVariable().getName() + "+"+getOpCode(icode.getOffsetOperand()) + ","+icode.getTargetOperand());
+				writer.append("\t mul $4,"+ getOpCode(icode.getOffsetOperand())+"\n");
+				writer.append("\t movl " + ((VariableOperand)icode.getBaseOperand()).getVariable().getName() + "+"+getOpCode(icode.getOffsetOperand()) + ","+icode.getTargetOperand()+"\n");
     		} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
     	}else{
     		try {
-				writer.append("\t mul $-4,"+ getOpCode(icode.getOffsetOperand()));
-				writer.append("\t addl $"+((VariableOperand)icode.getBaseOperand()).getVariable().getOffset()+","+getOpCode(icode.getOffsetOperand()));
-			//	writer.append("\t movl " + getOpCode(icode.getOffsetOperand())"+"+getOpCode(icode.getOffsetOperand()) + ","+icode.getTargetOperand());
+				writer.append("\t mul $4,"+ getOpCode(icode.getOffsetOperand())+"\n");
+				writer.append("\t addl $"+((VariableOperand)icode.getBaseOperand()).getVariable().getOffset()+","+getOpCode(icode.getOffsetOperand())+"\n");
+				writer.append("\t movl " + getOpCode(icode.getOffsetOperand())+ ","+icode.getTargetOperand()+"\n");
     		} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -374,9 +375,9 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      */
     public void visit(final CRET icode) {
     	try {
+    		writer.append("\t movl " + getOpCode(icode.getOperand()) + ", %eax \n");
     		writer.append("\t movl %ebp, %esp \n");
     		writer.append("\t popl %ebp \n");
-    		writer.append("\t movl " + getOpCode(icode.getOperand()) + ", %eax \n");
     		writer.append("\t ret \n");
     		writer.flush();
 
@@ -395,6 +396,24 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
      *            ICode to visit
      */
     public void visit(final CSTORE icode) {
+    	if(((VariableOperand)icode.getBaseOperand()).getVariable().getOffset() == -1){
+    		try {
+				writer.append("\t mul $4,"+ getOpCode(icode.getOffsetOperand())+"\n");
+				writer.append("\t movl " + getOpCode(icode.getValueOperand()) + "," + ((VariableOperand)icode.getBaseOperand()).getVariable().getName() + "+"+getOpCode(icode.getOffsetOperand())+"\n");
+    		} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}else{
+    		try {
+				writer.append("\t mul $4,"+ getOpCode(icode.getOffsetOperand())+"\n");
+				writer.append("\t addl $"+((VariableOperand)icode.getBaseOperand()).getVariable().getOffset()+","+getOpCode(icode.getOffsetOperand())+"\n");
+				writer.append("\t movl " + icode.getValueOperand()+ "," + getOpCode(icode.getOffsetOperand())+"\n");
+    		} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
         process(icode);
         return;
     }
@@ -510,6 +529,7 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
 	    			for(int i=0; i< local.getType().getNumDimensions();i++){
 	    				arraysize *= local.getType().getDimSize(i);
 	    			}
+	    			arraysize *= 4;
 	    			writer.append("\t subl $" + arraysize + ", %esp \n");
 	    		}
 	    		else if(local.getType().isRealType()){
