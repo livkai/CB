@@ -148,8 +148,8 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     		//check whether target is a VirtReg
     		if(((RegisterOperand) icode.getTargetOperand()).getRegister() instanceof VirtualRegister) {
 	    		VirtualRegister vr = (VirtualRegister) ((RegisterOperand) icode.getTargetOperand()).getRegister();
-	        	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
-	        	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+	        	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg("%eax",icode.getLeftOperand().getType());
+	        	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg("%edx",icode.getRightOperand().getType());
 	            //copy left/right operands in hardRegs
 	        	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
 	            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn);
@@ -178,8 +178,8 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     		//check whether target is a virt Reg
     		if(((RegisterOperand) icode.getTargetOperand()).getRegister() instanceof VirtualRegister) {
 	    		VirtualRegister vr = (VirtualRegister) ((RegisterOperand) icode.getTargetOperand()).getRegister();
-	        	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
-	        	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+	        	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg("%eax", icode.getLeftOperand().getType());
+	        	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg("%edx", icode.getRightOperand().getType());
 	            //copy left/right operands in hardRegs
 	        	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
 	            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn);
