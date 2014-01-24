@@ -382,15 +382,17 @@ public final class Compiler {
 		 * TODO for exercise 7: Enable this code once your compiler
 		 * generates assembly code.
 		 */
-/*
+
 		if (assembly) {
+			System.out.println("im assembly!");
 			runAssembler(aso, obj);
 
 			if (link) {
+				System.out.println("im link!");
 				runLinker(obj, binary);
 			}
 		}
-*/
+
 		return;
 	}
 
@@ -409,7 +411,7 @@ public final class Compiler {
 			machopt = "-mfpu=vfp ";
 		}
 
-		String asc = commandPrefix + "as " + machopt + "-o " + output + " " + input;
+		String asc = commandPrefix + "as " + machopt + "-g -o " + output + " " + input;
 		execStuff(asc, new String[] {input, output});
 
 		if (!keep) {
@@ -442,7 +444,7 @@ public final class Compiler {
 			binfmt = "-melf_i386 ";
 		}
 
-		String ldc = commandPrefix + "ld " + binfmt + "-o " + output + " " + input + " " + lib + " " + start;
+		String ldc = commandPrefix + "ld " + binfmt + "-g -o " + output + " " + input + " " + lib + " " + start;
 		execStuff(ldc, new String[] {output, input});
 		if (!keep) {
 			deleteFile(input);

@@ -820,7 +820,7 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 				HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(Type.getRealType());
 				CASSGN assgn = new CASSGN(new RegisterOperand(hr), new RegisterOperand(vr));
 				irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn);
-				CR2I r2i = new CR2I(new RegisterOperand(hr2),new RegisterOperand(hr));
+				CI2R r2i = new CI2R(new RegisterOperand(hr2),new RegisterOperand(hr));
 				irfuncs.get(irfuncs.size()-1).addBefore(icode, r2i);
 				CASSGN assgn1 = new CASSGN(icode.getTargetOperand(), new RegisterOperand(hr2));
 				irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn1);
@@ -833,7 +833,7 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     		}
     	}else{
     		HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(Type.getRealType());
-			CR2I r2i = new CR2I(new RegisterOperand(hr),icode.getOperand());
+			CI2R r2i = new CI2R(new RegisterOperand(hr),icode.getOperand());
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, r2i);
 			CASSGN assgn1 = new CASSGN(icode.getTargetOperand(), new RegisterOperand(hr));
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn1);

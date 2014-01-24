@@ -229,9 +229,11 @@ public class TypeCheckASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implement
                                         else if(!ft.getParType(i).equals(al.get(i).getType())){
                                                 //children have different types -> add cast node
                                                 if(ft.getParType(i).isIntType()){
+                                                		
                                                         Real2Int r2i = new Real2Int(al.get(i).getFile(),al.get(i).getLine(),al.get(i));
                                                         al.addParam(r2i, i);
                                                 }else {
+                                                	System.out.println("param:"+ ft.getParType(i)+ n.getIdentifier());
                                                         Int2Real i2r = new Int2Real(al.get(i).getFile(),al.get(i).getLine(),al.get(i));
                                                         al.addParam(i2r, i);
                                                 }
