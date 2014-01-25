@@ -9,6 +9,15 @@
 int readInt();
 int writeInt();
 
+
+int main() {
+	int a = readInt();
+	printf("result: %d\n", a);
+	//int b = writeInt(15);
+//printf("result: %d\n", b);
+	return a;
+}
+
 int readInt(){
 	char tmp[1];
 	char buf[11];
