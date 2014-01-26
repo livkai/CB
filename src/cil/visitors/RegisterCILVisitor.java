@@ -68,7 +68,20 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     			CASSGN assgn2 = new CASSGN(((CTarget) icode).getTargetOperand(), new RegisterOperand(hr));
 	            irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn2);
 	            irfuncs.get(irfuncs.size()-1).removeIcode(icode);
-    			 irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
+    			irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
+        	}
+    	}else if(((CUnary) icode).getTargetOperand() instanceof RegisterOperand){
+    		if(((RegisterOperand) ((CUnary) icode).getTargetOperand()).getRegister() instanceof VirtualRegister && (icode.getOperand() instanceof VariableOperand)) {
+    			VirtualRegister vr = (VirtualRegister) ((RegisterOperand) ((CUnary) icode).getTargetOperand()).getRegister();
+    			HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(((VariableOperand)icode.getOperand()).getType());
+    			//assignment from variable to hardReg
+    			CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getOperand());
+    			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn);
+    			//assignment from hardReg to virtreg
+    			CASSGN assgn2 = new CASSGN(new RegisterOperand(vr), new RegisterOperand(hr));
+	            irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn2);
+	            irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+    			irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
         	}
     	}
         return;
@@ -356,12 +369,34 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     public void visit(final CBEQ icode) {
     	boolean leftOp = false;
     	boolean rightOp = false;
-    	HardwareRegister hr1 = null;
-    	HardwareRegister hr2 = null;
+    //	HardwareRegister hr1 = null;
+    	//HardwareRegister hr2 = null;
     	VirtualRegister vr1 = null;
     	VirtualRegister vr2 = null;
+    	
+    	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
+    	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+        //copy left/right operands in hardRegs
+    	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn);
+        CASSGN assgn2 = new CASSGN(new RegisterOperand(hr2), icode.getRightOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
+		CBEQ eq = new CBEQ(new RegisterOperand(hr), new RegisterOperand(hr2), icode.getLabel());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, eq);
+        //copy result of subtraction from hardReg in virtReg
+        if(!(icode.getLeftOperand() instanceof ConstOperand)){
+        	CASSGN assgn3 = new CASSGN(icode.getLeftOperand(), new RegisterOperand(hr));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
+        }
+        if(!(icode.getRightOperand() instanceof ConstOperand)){
+        	CASSGN assgn4 = new CASSGN(icode.getRightOperand(), new RegisterOperand(hr2));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn4);
+        }
+        irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
     	//check whether leftOp is a virtReg
-    	if(icode.getLeftOperand() instanceof RegisterOperand) {
+    	/*if(icode.getLeftOperand() instanceof RegisterOperand) {
     		if(((RegisterOperand) icode.getLeftOperand()).getRegister() instanceof VirtualRegister) {
     			vr1 = (VirtualRegister) ((RegisterOperand) icode.getLeftOperand()).getRegister();
 				hr1 = irfuncs.get(irfuncs.size()-1).getHardReg(vr1.getType());
@@ -411,7 +446,7 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
             irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     		irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
-    	}
+    	}*/
         process(icode);
         return;
     }
@@ -425,11 +460,11 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     public void visit(final CBGE icode) {
     	boolean leftOp = false;
     	boolean rightOp = false;
-    	HardwareRegister hr1 = null;
-    	HardwareRegister hr2 = null;
+//    	HardwareRegister hr1 = null;
+//    	HardwareRegister hr2 = null;
     	VirtualRegister vr1 = null;
     	VirtualRegister vr2 = null;
-    
+/*
     	if(icode.getLeftOperand() instanceof RegisterOperand) {
     		if(((RegisterOperand) icode.getLeftOperand()).getRegister() instanceof VirtualRegister) {
     			vr1 = (VirtualRegister) ((RegisterOperand) icode.getLeftOperand()).getRegister();
@@ -474,7 +509,29 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
             irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     		irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
-    	}
+    	}*/
+       	
+    	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
+    	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+        //copy left/right operands in hardRegs
+    	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn);
+        CASSGN assgn2 = new CASSGN(new RegisterOperand(hr2), icode.getRightOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
+		CBGE geq = new CBGE(new RegisterOperand(hr), new RegisterOperand(hr2), icode.getLabel());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, geq);
+        //copy result of subtraction from hardReg in virtReg
+        if(!(icode.getLeftOperand() instanceof ConstOperand)){
+        	CASSGN assgn3 = new CASSGN(icode.getLeftOperand(), new RegisterOperand(hr));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
+        }
+        if(!(icode.getRightOperand() instanceof ConstOperand)){
+        	CASSGN assgn4 = new CASSGN(icode.getRightOperand(), new RegisterOperand(hr2));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn4);
+        }
+        irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
         process(icode);
         return;
     }
@@ -488,12 +545,12 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     public void visit(final CBGT icode) {
     	boolean leftOp = false;
     	boolean rightOp = false;
-    	HardwareRegister hr1 = null;
-    	HardwareRegister hr2 = null;
+//    	HardwareRegister hr1 = null;
+//    	HardwareRegister hr2 = null;
     	VirtualRegister vr1 = null;
     	VirtualRegister vr2 = null;
     
-    	if(icode.getLeftOperand() instanceof RegisterOperand) {
+  /*  	if(icode.getLeftOperand() instanceof RegisterOperand) {
     		if(((RegisterOperand) icode.getLeftOperand()).getRegister() instanceof VirtualRegister) {
     			vr1 = (VirtualRegister) ((RegisterOperand) icode.getLeftOperand()).getRegister();
 				hr1 = irfuncs.get(irfuncs.size()-1).getHardReg(vr1.getType());
@@ -537,7 +594,29 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
             irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     		irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
-    	}
+    	}*/
+       	
+    	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
+    	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+        //copy left/right operands in hardRegs
+    	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn);
+        CASSGN assgn2 = new CASSGN(new RegisterOperand(hr2), icode.getRightOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
+		CBGT gt = new CBGT(new RegisterOperand(hr), new RegisterOperand(hr2), icode.getLabel());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, gt);
+        //copy result of subtraction from hardReg in virtReg
+        if(!(icode.getLeftOperand() instanceof ConstOperand)){
+        	CASSGN assgn3 = new CASSGN(icode.getLeftOperand(), new RegisterOperand(hr));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
+        }
+        if(!(icode.getRightOperand() instanceof ConstOperand)){
+        	CASSGN assgn4 = new CASSGN(icode.getRightOperand(), new RegisterOperand(hr2));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn4);
+        }
+        irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
         process(icode);
         return;
     }
@@ -551,12 +630,12 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     public void visit(final CBLE icode) {
     	boolean leftOp = false;
     	boolean rightOp = false;
-    	HardwareRegister hr1 = null;
-    	HardwareRegister hr2 = null;
+//    	HardwareRegister hr1 = null;
+//    	HardwareRegister hr2 = null;
     	VirtualRegister vr1 = null;
     	VirtualRegister vr2 = null;
     
-    	if(icode.getLeftOperand() instanceof RegisterOperand) {
+   /* 	if(icode.getLeftOperand() instanceof RegisterOperand) {
     		if(((RegisterOperand) icode.getLeftOperand()).getRegister() instanceof VirtualRegister) {
     			vr1 = (VirtualRegister) ((RegisterOperand) icode.getLeftOperand()).getRegister();
 				hr1 = irfuncs.get(irfuncs.size()-1).getHardReg(vr1.getType());
@@ -600,7 +679,29 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
             irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     		irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
-    	}
+    	}*/
+       	
+    	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
+    	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+        //copy left/right operands in hardRegs
+    	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn);
+        CASSGN assgn2 = new CASSGN(new RegisterOperand(hr2), icode.getRightOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
+		CBLE le = new CBLE(new RegisterOperand(hr), new RegisterOperand(hr2), icode.getLabel());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, le);
+        //copy result of subtraction from hardReg in virtReg
+        if(!(icode.getLeftOperand() instanceof ConstOperand)){
+        	CASSGN assgn3 = new CASSGN(icode.getLeftOperand(), new RegisterOperand(hr));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
+        }
+        if(!(icode.getRightOperand() instanceof ConstOperand)){
+        	CASSGN assgn4 = new CASSGN(icode.getRightOperand(), new RegisterOperand(hr2));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn4);
+        }
+        irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
         process(icode);
         return;
     }
@@ -614,12 +715,12 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     public void visit(final CBLT icode) {
     	boolean leftOp = false;
     	boolean rightOp = false;
-    	HardwareRegister hr1 = null;
-    	HardwareRegister hr2 = null;
+//    	HardwareRegister hr1 = null;
+//    	HardwareRegister hr2 = null;
     	VirtualRegister vr1 = null;
     	VirtualRegister vr2 = null;
     
-    	if(icode.getLeftOperand() instanceof RegisterOperand) {
+    	/*if(icode.getLeftOperand() instanceof RegisterOperand) {
     		if(((RegisterOperand) icode.getLeftOperand()).getRegister() instanceof VirtualRegister) {
     			vr1 = (VirtualRegister) ((RegisterOperand) icode.getLeftOperand()).getRegister();
 				hr1 = irfuncs.get(irfuncs.size()-1).getHardReg(vr1.getType());
@@ -663,7 +764,29 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
             irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     		irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
-    	}
+    	}*/
+       	
+    	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
+    	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+        //copy left/right operands in hardRegs
+    	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn);
+        CASSGN assgn2 = new CASSGN(new RegisterOperand(hr2), icode.getRightOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
+		CBLT lt = new CBLT(new RegisterOperand(hr), new RegisterOperand(hr2), icode.getLabel());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, lt);
+        //copy result of subtraction from hardReg in virtReg
+        if(!(icode.getLeftOperand() instanceof ConstOperand)){
+        	CASSGN assgn3 = new CASSGN(icode.getLeftOperand(), new RegisterOperand(hr));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
+        }
+        if(!(icode.getRightOperand() instanceof ConstOperand)){
+        	CASSGN assgn4 = new CASSGN(icode.getRightOperand(), new RegisterOperand(hr2));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn4);
+        }
+        irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
         process(icode);
         return;
     }
@@ -677,11 +800,11 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     public void visit(final CBNE icode) {
     	boolean leftOp = false;
     	boolean rightOp = false;
-    	HardwareRegister hr1 = null;
-    	HardwareRegister hr2 = null;
+//    	HardwareRegister hr1 = null;
+//    	HardwareRegister hr2 = null;
     	VirtualRegister vr1 = null;
     	VirtualRegister vr2 = null;
-    
+    /*
     	if(icode.getLeftOperand() instanceof RegisterOperand) {
     		if(((RegisterOperand) icode.getLeftOperand()).getRegister() instanceof VirtualRegister) {
     			vr1 = (VirtualRegister) ((RegisterOperand) icode.getLeftOperand()).getRegister();
@@ -726,7 +849,29 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
             irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     		irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
-    	}
+    	}*/
+       	
+    	HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getLeftOperand().getType());
+    	HardwareRegister hr2 = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getRightOperand().getType());
+        //copy left/right operands in hardRegs
+    	CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getLeftOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn);
+        CASSGN assgn2 = new CASSGN(new RegisterOperand(hr2), icode.getRightOperand());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn2);
+		CBNE ne = new CBNE(new RegisterOperand(hr), new RegisterOperand(hr2), icode.getLabel());
+        irfuncs.get(irfuncs.size()-1).addBefore(icode, ne);
+        //copy result of subtraction from hardReg in virtReg
+        if(!(icode.getLeftOperand() instanceof ConstOperand)){
+        	CASSGN assgn3 = new CASSGN(icode.getLeftOperand(), new RegisterOperand(hr));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn3);
+        }
+        if(!(icode.getRightOperand() instanceof ConstOperand)){
+        	CASSGN assgn4 = new CASSGN(icode.getRightOperand(), new RegisterOperand(hr2));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn4);
+        }
+        irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr2.getName());
+        irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
         process(icode);
         return;
     }
