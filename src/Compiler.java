@@ -384,11 +384,9 @@ public final class Compiler {
 		 */
 
 		if (assembly) {
-			System.out.println("im assembly!");
 			runAssembler(aso, obj);
 
 			if (link) {
-				System.out.println("im link!");
 				runLinker(obj, binary);
 			}
 		}

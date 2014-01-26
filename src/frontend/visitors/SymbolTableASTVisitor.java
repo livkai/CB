@@ -82,14 +82,14 @@ public class SymbolTableASTVisitor<P, R> extends ASTVisitorAdapter<P, R> impleme
 		Variable v2 = new Variable("readReal", new FuncType(Type.getRealType(),new ArrayList<Type>()));
 		v2.setDepth(0);
 		ArrayList<Type> params = new ArrayList<Type>();
+		ArrayList<Type> params2 = new ArrayList<Type>();
 		params.add(Type.getIntType());
 		Variable v3 = new Variable("writeInt", new FuncType(Type.getIntType(),params));
 		v3.setDepth(0);
 		Variable v4 = new Variable("writeChar", new FuncType(Type.getIntType(),params));
 		v4.setDepth(0);
-		params.remove(0);
-		params.add(Type.getRealType());
-		Variable v5 = new Variable("writeReal", new FuncType(Type.getIntType(),params));
+		params2.add(Type.getRealType());
+		Variable v5 = new Variable("writeReal", new FuncType(Type.getIntType(),params2));
 		v5.setDepth(0);
 		st.addVariable(v0);
 		st.addVariable(v1);

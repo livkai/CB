@@ -5,7 +5,10 @@ writeChar:
 	pushl %ebp
 	movl %esp, %ebp
 	movl $1, %ebx
-	movl 8(%ebp),%ecx
+	movl 8(%ebp), %eax
+	movl %eax, buf
+	movl $buf, %ecx
+	movl $1, %edx
 	movl $4, %eax
 	int $0x80
 
