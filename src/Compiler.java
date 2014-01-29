@@ -384,10 +384,16 @@ public final class Compiler {
 		 */
 
 		if (assembly) {
+			System.out.println(aso + " " + obj + " "+  binary);
 			runAssembler(aso, obj);
 
 			if (link) {
 				runLinker(obj, binary);
+			}
+			
+			if (!keep) {
+				deleteFile(aso);
+				deleteFile(obj);
 			}
 		}
 
@@ -409,12 +415,8 @@ public final class Compiler {
 			machopt = "-mfpu=vfp ";
 		}
 
-		String asc = commandPrefix + "as " + machopt + "-g -o " + output + " " + input;
+		String asc = commandPrefix + "as " + machopt + " -o " + output + " " + input;
 		execStuff(asc, new String[] {input, output});
-
-		if (!keep) {
-			deleteFile(input);
-		}
 	}
 
 	/**

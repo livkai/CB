@@ -54,11 +54,11 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
      */
     public void visit(final CASSGN icode) {
         process(icode);
-       
+        
 	//check whether the right side of the assignment is a Register
         if(((CUnary) icode).getOperand() instanceof RegisterOperand) {
         	//check if the register is a virtual one and left side is a variable (const and register makes no sense)
-    		if(((RegisterOperand) ((CUnary) icode).getOperand()).getRegister() instanceof VirtualRegister && (icode.getTargetOperand() instanceof VariableOperand)) {
+    		if(((RegisterOperand) ((CUnary) icode).getOperand()).getRegister() instanceof VirtualRegister /*&& (icode.getTargetOperand() instanceof VariableOperand)*/) {
     			VirtualRegister vr = (VirtualRegister) ((RegisterOperand) ((CUnary) icode).getOperand()).getRegister();
     			HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(vr.getType());
     			//assignment from virtReg to hardReg
@@ -71,9 +71,15 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
     			irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
         	}
     	}else if(((CUnary) icode).getTargetOperand() instanceof RegisterOperand){
-    		if(((RegisterOperand) ((CUnary) icode).getTargetOperand()).getRegister() instanceof VirtualRegister && (icode.getOperand() instanceof VariableOperand)) {
+    		if(((RegisterOperand) ((CUnary) icode).getTargetOperand()).getRegister() instanceof VirtualRegister /*&& (icode.getOperand() instanceof VariableOperand)*/) {
     			VirtualRegister vr = (VirtualRegister) ((RegisterOperand) ((CUnary) icode).getTargetOperand()).getRegister();
-    			HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(((VariableOperand)icode.getOperand()).getType());
+    			HardwareRegister hr;
+    			if(icode.getOperand() instanceof VariableOperand) {
+    				hr = irfuncs.get(irfuncs.size()-1).getHardReg(((VariableOperand)icode.getOperand()).getType());
+    			}else{
+    				hr = irfuncs.get(irfuncs.size()-1).getHardReg(((ConstOperand)icode.getOperand()).getType());
+    						
+    			}
     			//assignment from variable to hardReg
     			CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getOperand());
     			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn);
@@ -82,7 +88,17 @@ public class RegisterCILVisitor extends CILVisitorAdapter {
 	            irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn2);
 	            irfuncs.get(irfuncs.size()-1).removeIcode(icode);
     			irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
-        	}
+    		}
+    	}else if(((CUnary) icode).getOperand() instanceof VariableOperand && ((CUnary) icode).getTargetOperand() instanceof VariableOperand) {
+    		HardwareRegister hr = irfuncs.get(irfuncs.size()-1).getHardReg(icode.getOperand().getType());
+			//assignment from virtReg to hardReg
+			CASSGN assgn = new CASSGN(new RegisterOperand(hr), icode.getOperand());
+			irfuncs.get(irfuncs.size()-1).addBefore(icode, assgn);
+			//assignment from hardReg to variable
+			CASSGN assgn2 = new CASSGN(((CTarget) icode).getTargetOperand(), new RegisterOperand(hr));
+            irfuncs.get(irfuncs.size()-1).addBefore(icode,assgn2);
+            irfuncs.get(irfuncs.size()-1).removeIcode(icode);
+			irfuncs.get(irfuncs.size()-1).freeHardregs.add(0, hr.getName());
     	}
         return;
     }

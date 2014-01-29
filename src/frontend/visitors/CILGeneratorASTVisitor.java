@@ -36,6 +36,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	//lists for the current true/false labels
 	protected ArrayList<CLABEL> trueLabels;
 	protected ArrayList<CLABEL> falseLabels;
+	protected boolean flag;
 
 	/**
 	 * prolog. 
@@ -707,7 +708,10 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 			}
 		}
 		//test if we need a new true label or an existing one
-		if(trueLabels.size() <= count|| (list.get(list.size()-2) instanceof ANDExpr && ((ANDExpr)list.get(list.size()-2)).getLeft().equals(astnode))) {
+		if((list.get(list.size()-2) instanceof ORExpr && ((ORExpr)list.get(list.size()-2)).getRight().equals(astnode))){
+			label = trueLabels.get(trueLabels.size()-1);
+		}
+		else if(trueLabels.size() <= count|| (list.get(list.size()-2) instanceof ANDExpr && ((ANDExpr)list.get(list.size()-2)).getLeft().equals(astnode))) {
 			label = irfuncs.get(irfuncs.size()-1).getLabel();
 			trueLabels.add(label);
 		}else {

@@ -1,10 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <string.h>
 
+extern int readChar();
+extern int writeChar(int);
 
 int readInt();
 int writeInt();
@@ -14,34 +10,75 @@ int readInt(){
 	char buf[11];
 	int flag1 = 0;
 	int flag2 = 0;
-	char *ptr;
-	ptr = buf;
+	int flag3 = 0;
+	int count = 0;
 	while(1) {
-		if(tmp[0] = fgetc(stdin)){
-			if(tmp[0] == '\n') {
-				if(ferror(stdin)){
-		          		perror("fgetc");
-		          		exit(EXIT_FAILURE);
-		      		} else{
-					return atoi(buf);
-				}
+		tmp[0] = readChar();
+		if(tmp[0] == 10) {
+			int result = 0;
+			int sign;
+			int a;
+			if(buf[0] == 45){
+				sign = -1;
+				a = 1;
+			}else{
+				sign = 1;
+				a = 0;
 			}
-			if((tmp[0] == '-' || tmp[0] == '0'|| tmp[0] == '1' || tmp[0] == '2' || tmp[0] == '3' || tmp[0] == '4' || tmp[0] == '5' || tmp[0] == '6' || tmp[0] == '7' || tmp[0] == '8' || tmp[0] == '9')&& !flag1) {
-			*ptr = tmp[0];
-			 ptr++;
-			 flag2 = 1;
+			while(a<count){
+				int dec = count-a-1;
+				int ten = 1;
+				while(dec>0){
+					ten = ten*10;
+					dec--;
+				}
+				result = result+((buf[a]-48)*ten);
+				a++;
+			}
+			return result*sign;	
+		}
+		if((tmp[0] == 45 && !flag1)) {
+		buf[0] = tmp[0];
+		count++;
+		flag1 = 1;
+		flag3 = 1;
+		}else {
+			if(((tmp[0] >= 48 &&tmp[0] <= 57)) && !flag2) {
+				buf[count] = tmp[0];
+				count++;
+				flag3 = 1;
 			}else {
-				if(flag2 == 1) {
-					flag1 = 1;
+				if(flag3 == 1) {
+					flag2 = 1;
 				}
-			}
+			}	
 		}
 	}
 }
 
 
 int writeInt(int x) {
-	fprintf(stdout, "%i\n", x);
-	char digits[11];
-	return sprintf(digits, "%i", x);	
+	int buf[11];
+	int count = 10;
+	int neg = 0;
+	int tmp;
+	if(x<0){
+		neg = 1;
+		x*=-1;
+	}
+	tmp = x;
+	while(tmp>0){
+		buf[count] = (tmp % 10)+48;
+		tmp = tmp/10;
+		count--;		 		
+	}
+	if(neg){
+		buf[count] = 45;
+		count--;
+	}
+	int res = 10-count;
+	for(int i = count+1;i<11;i++){
+		writeChar(buf[i]);
+	}
+	return res;	
 }

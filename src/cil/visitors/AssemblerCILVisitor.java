@@ -305,6 +305,7 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
     			writer.append("\t movl $4, %edx\n");
 				writer.append("\t mul %edx\n");
 				writer.append("\t movl " + ((VariableOperand)icode.getBaseOperand()).getVariable().getName() + "+0(%eax)" + ", "+icode.getTargetOperand()+"\n");
+				writer.flush();
     		} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -318,6 +319,7 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
 				
 				writer.append("\t movl (%ebp,%eax,1),  %edx " +"\n");
 				writer.append("\t movl %edx, " + getOpCode(icode.getTargetOperand())+ " \n");
+				writer.flush();
     		} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -409,7 +411,8 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
     			writer.append("\t movl " + getOpCode(icode.getOffsetOperand())+ ", %eax\n");
     			writer.append("\t movl $4, %edx\n");
 				writer.append("\t mul %edx\n");
-				writer.append("\t movl " + getOpCode(icode.getValueOperand()) + "," + ((VariableOperand)icode.getBaseOperand()).getVariable().getName() + "+0(%eax)"+"\n");
+				writer.append(" \t movl "+ getOpCode(icode.getValueOperand())+", %edx\n");
+				writer.append("\t movl " + "%edx" + "," + ((VariableOperand)icode.getBaseOperand()).getVariable().getName() + "+0(%eax)"+"\n");
     		} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -505,7 +508,6 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
     				}
 					writer.append("\n \t .lcomm "+global.getName()+","+size+"\n");
 					writer.flush();
-					System.out.println("lcomm");
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -513,6 +515,7 @@ public class AssemblerCILVisitor extends CILVisitorAdapter{
 			}else{
 				try {
 					writer.append("\t .lcomm "+global.getName()+",4\n");
+					writer.flush();
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
