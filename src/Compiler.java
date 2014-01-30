@@ -415,7 +415,7 @@ public final class Compiler {
 			machopt = "-mfpu=vfp ";
 		}
 
-		String asc = commandPrefix + "as " + machopt + " -o " + output + " " + input;
+		String asc = commandPrefix + "as " + machopt + "-g -o " + output + " " + input;
 		execStuff(asc, new String[] {input, output});
 	}
 

@@ -67,6 +67,10 @@ int writeInt(int x) {
 		x*=-1;
 	}
 	tmp = x;
+	if(x == 0){
+	  buf[count] = 48;
+	  count--;
+	}
 	while(tmp>0){
 		buf[count] = (tmp % 10)+48;
 		tmp = tmp/10;

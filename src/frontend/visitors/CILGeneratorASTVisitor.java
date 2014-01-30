@@ -429,7 +429,7 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 	public R visit(final VarDecl n, final P param) {
 		prolog(n);
 		//add local variable
-		if(n.getIdentifier().getVariable().getDepth() != 0) {
+		if(n.getIdentifier().getVariable().getDepth() != 0 && !(list.get(list.size()-2) instanceof ParList)) {
 			irfuncs.get(irfuncs.size()-1).addLocals(n.getIdentifier().getVariable());
 		}
 		decl(n, param);

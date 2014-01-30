@@ -2,7 +2,7 @@
 
 _start:
 	call main
-	movl $0, %ebx
+	movl %eax, %ebx
 	movl $1, %eax
 	int $0x80
 	
