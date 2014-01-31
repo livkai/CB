@@ -283,7 +283,13 @@ public class CILGeneratorASTVisitor<P, R> extends ASTVisitorAdapter<P, R> implem
 				op = new VariableOperand(it.getVariable());
 			}else if(it instanceof Const) {
 				op = new ConstOperand(((Const) it).getNumber(), it.getType());
-			}else {
+			}else if(it instanceof ArrayAccess){
+				VirtualRegister vr2 = irfuncs.get(irfuncs.size()-1).getVirtReg(it.getType());
+				vrList.add(vr2);
+				CLOAD load = new CLOAD(new RegisterOperand(vr2), new VariableOperand(((ArrayAccess) it).getIdentifier().getVariable()), new RegisterOperand(vrList.get(vrList.size()-2)));
+				irfuncs.get(irfuncs.size()-1).add(load);
+				op = new RegisterOperand(vrList.get(vrList.size()-1));
+			}else{
 				op = new RegisterOperand(vrList.get(vrList.size()-1));
 			}
 			

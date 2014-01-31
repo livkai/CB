@@ -1,4 +1,3 @@
-
 extern int readChar();
 extern int writeChar(int);
 
@@ -64,15 +63,19 @@ int writeInt(int x) {
 	int tmp;
 	if(x<0){
 		neg = 1;
-		x*=-1;
 	}
 	tmp = x;
 	if(x == 0){
 	  buf[count] = 48;
 	  count--;
 	}
-	while(tmp>0){
-		buf[count] = (tmp % 10)+48;
+	while(tmp!=0){
+		int digit = 0;
+		digit = tmp % 10;
+		if(neg){
+			digit = digit * -1;
+		}	
+		buf[count] = digit+48;		
 		tmp = tmp/10;
 		count--;		 		
 	}
